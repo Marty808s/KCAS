@@ -79,9 +79,9 @@ decomposed_open <- decompose(ts_open, type = "multiplicative")
 
 
 # Vizualizace dekompozice
-plot(decomposed_close, main = "Dekompozice Close Price")
-plot(decomposed_volume, main = "Dekompozice Volume")
-plot(decomposed_open, main = "Dekompozice Open Price")
+plot(decomposed_close)
+plot(decomposed_volume)
+plot(decomposed_open)
 
 
 #---------------------------------------------------------------------------
@@ -111,7 +111,6 @@ acf(residual_volume, main="ACF pro volume")
 
 #---------------------------------------------------------------------------
 # Jednoduché exponenciální vyrovnání
-
 ses_close <- ses(data$Close, h = 12)
 ses_open <- ses(data$Open, h = 12)
 ses_volume <- ses(data$Volume, h = 12)
@@ -176,3 +175,5 @@ p9 <- autoplot(fc_volume) +
 
 # Zobrazení grafů vedle sebe
 grid.arrange(p7, p8, p9, ncol = 1)
+
+#---------------------------------------------------------------------------
