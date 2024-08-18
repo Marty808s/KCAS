@@ -83,7 +83,6 @@ plot(decomposed_close)
 plot(decomposed_volume)
 plot(decomposed_open)
 
-
 #---------------------------------------------------------------------------
 # 3. Analýza
 
@@ -107,7 +106,6 @@ acf(residual_volume, main="ACF pro volume")
 # U složky volume můžeme pozorovat významnou autokorelaci, která vyznačuje
 # přítomnost krátkodobých závislostí.
 # V dlouhodobém trendu se již nacházíme pod prahovou hodnotou 
-
 
 #---------------------------------------------------------------------------
 # Jednoduché exponenciální vyrovnání
@@ -139,7 +137,6 @@ p6 <- ggplot(data, aes(x = Date)) +
 
 # Zobrazení grafů vedle sebe
 grid.arrange(p4, p5, p6, ncol = 1)
-
 
 #---------------------------------------------------------------------------
 # Vytvoření modelu sezónnosti pomocí tslm
