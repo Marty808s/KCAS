@@ -5,7 +5,7 @@ library(gridExtra)
 library(ggplot2)
 
 #---------------------------------------------------------------------------
-data = monthly_averages
+data <- read.csv("./monthly_averages.csv")
 
 # Převod datumu na správný datový typ Date
 data <- data %>%
@@ -51,7 +51,7 @@ plot(ts_close)
 plot(ts_volume)
 plot(ts_open)
 
-# grafy jedotlivých proměnných
+# grafy jedotlivých proměnných s vyhlazením
 p1 <- ggplot(data, aes(x = Date, y = Close)) +
   geom_line(color = "blue") +
   geom_smooth(method = "loess", color = "red", se = FALSE, size = 0.5) +
@@ -72,17 +72,107 @@ grid.arrange(p1, p2, p3, ncol = 3)
 
 #---------------------------------------------------------------------------
 # 2. Dekompozice
-decomposed_close <- decompose(ts_close)
-decomposed_volume <- decompose(ts_volume)
-
+decomposed_close <- decompose(ts_close, type = "multiplicative")
+decomposed_volume <- decompose(ts_volume, type = "multiplicative")
+decomposed_open <- decompose(ts_open, type = "multiplicative")
 # plotneme pro vizualizaci trendu, sezony....
-plot(decomposed_close)
-plot(decomposed_volume)
+
+
+# Vizualizace dekompozice
+plot(decomposed_close, main = "Dekompozice Close Price")
+plot(decomposed_volume, main = "Dekompozice Volume")
+plot(decomposed_open, main = "Dekompozice Open Price")
+
 
 #---------------------------------------------------------------------------
 # 3. Analýza
 
 # Autokorelační funkce
+residual_close <- decomposed_close$random
+residual_close <- na.omit(residual_close)
+acf(residual_close, main="ACF pro close")
+
+
+residual_open <- decomposed_open$random
+residual_open <- na.omit(residual_open)
+acf(residual_open, main="ACF pro open")
+# Open a close vykazují téměř stejné hodnoty autokorelace, téměř se nedostaneme 
+# nad prahovou hodnotu
 
 
 
+residual_volume <- decomposed_volume$random
+residual_volume <- na.omit(residual_volume)
+acf(residual_volume, main="ACF pro volume")
+# U složky volume můžeme pozorovat významnou autokorelaci, která vyznačuje
+# přítomnost krátkodobých závislostí.
+# V dlouhodobém trendu se již nacházíme pod prahovou hodnotou 
+
+
+#---------------------------------------------------------------------------
+# Jednoduché exponenciální vyrovnání
+
+ses_close <- ses(data$Close, h = 12)
+ses_open <- ses(data$Open, h = 12)
+ses_volume <- ses(data$Volume, h = 12)
+
+# Nahrání výsledků k půlvodnímu datasetu
+data <- data %>%
+  mutate(SES_Close = fitted(ses_close),
+         SES_Open = fitted(ses_open),
+         SES_Volume = fitted(ses_volume))
+
+# Vizualizace
+p4 <- ggplot(data, aes(x = Date)) +
+  geom_line(aes(y = Close), color = "blue") +
+  geom_line(aes(y = SES_Close), color = "purple", size = 1) +
+  labs(title = "Close s vyhazením Simple Exponential Smoothing", x = "Date", y = "Close Price")
+
+p5 <- ggplot(data, aes(x = Date)) +
+  geom_line(aes(y = Volume), color = "blue") +
+  geom_line(aes(y = SES_Volume), color = "purple", size = 1) +
+  labs(title = "Volume s vyhlazením Simple Exponential Smoothing", x = "Date", y = "Volume")
+
+p6 <- ggplot(data, aes(x = Date)) +
+  geom_line(aes(y = Open), color = "blue") +
+  geom_line(aes(y = SES_Open), color = "purple", size = 1) +
+  labs(title = "Open Price s vyhlazením Simple Exponential Smoothing", x = "Date", y = "Open Price")
+
+# Zobrazení grafů vedle sebe
+grid.arrange(p4, p5, p6, ncol = 1)
+
+
+#---------------------------------------------------------------------------
+# Vytvoření modelu sezónnosti pomocí tslm
+
+# Model sezónnosti pro Close
+model_close <- tslm(ts_close ~ trend + season)
+summary(model_close)
+
+# Model sezónnosti pro Open
+model_open <- tslm(ts_open ~ trend + season)
+summary(model_open)
+
+# Model sezónnosti pro Volume
+model_volume <- tslm(ts_volume ~ trend + season)
+summary(model_volume)
+
+#---------------------------------------------------------------------------
+# Předpověď pomocí modelu sezónnosti
+fc_close <- forecast(model_close, h = 12)
+fc_open <- forecast(model_open, h = 12)
+fc_volume <- forecast(model_volume, h = 12)
+
+#---------------------------------------------------------------------------
+# Vizualizace výsledků modelu a předpovědi
+p7 <- autoplot(fc_close) +
+  labs(title = "Předpověď pro Close Price", x = "Date", y = "Close Price")
+
+p8 <- autoplot(fc_open) +
+  labs(title = "Předpověď pro Open Price", x = "Date", y = "Open Price")
+
+p9 <- autoplot(fc_volume) +
+  labs(title = "Předpověď pro Volume", x = "Date", y = "Volume")
+
+# Zobrazení grafů vedle sebe
+grid.arrange(p7, p8, p9, ncol = 1)
