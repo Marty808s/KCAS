@@ -54,17 +54,17 @@ plot(ts_open)
 # grafy jedotlivých proměnných
 p1 <- ggplot(data, aes(x = Date, y = Close)) +
   geom_line(color = "blue") +
-  geom_smooth(method = "loess", color = "red", se = FALSE, size = 0.3) +
+  geom_smooth(method = "loess", color = "red", se = FALSE, size = 0.5) +
   ggtitle("Close")
 
 p2 <- ggplot(data, aes(x = Date, y = Volume)) +
   geom_line(color = "blue") +
-  geom_smooth(method = "loess", color = "red", se = FALSE, size = 0.3) +
+  geom_smooth(method = "loess", color = "red", se = FALSE, size = 0.5) +
   ggtitle("Volume")
 
 p3 <- ggplot(data, aes(x = Date, y = Open)) +
   geom_line(color = "blue") +
-  geom_smooth(method = "loess", color = "red", se = FALSE, size = 0.3) +
+  geom_smooth(method = "loess", color = "red", se = FALSE, size = 0.5) +
   ggtitle("Open")
 
 # zobrazení
@@ -79,6 +79,10 @@ decomposed_volume <- decompose(ts_volume)
 plot(decomposed_close)
 plot(decomposed_volume)
 
+#---------------------------------------------------------------------------
 # 3. Analýza
+
+# Autokorelační funkce
+
 
 
