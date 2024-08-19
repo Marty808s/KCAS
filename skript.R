@@ -15,6 +15,8 @@ data <- data %>%
 
 data
 
+#TO:DO - čištění dat HoltWinters()?
+
 # Date - datum den
 # Open - Cena otevření
 # High - Nejvyšší cena dne
@@ -174,3 +176,35 @@ p9 <- autoplot(fc_volume) +
 grid.arrange(p7, p8, p9, ncol = 1)
 
 #---------------------------------------------------------------------------
+# SARIMA
+arima <- auto.arima(ts_data, seasonal=TRUE)
+
+fitted_values_index <- fitted(arima)
+
+autoplot(ts_data, series="Data") +
+  autolayer(fitted_values_index, series="Fitted") +
+  labs(title = "Model SARIMA - Index", x = "Čas", y = "Index") +
+  theme_minimal() +
+  scale_colour_manual(values=c("Data"="blue","Fitted"="red"))
+
+#---------------------------------------------------------------------------
+# Optimální modely - podle AIC kritéria
+
+# sarima model
+sarima_model <- auto.arima(ts_data, seasonal=TRUE)
+
+# linear model s trendem a sezonosti
+linear_model <- tslm(ts_data ~ trend + season)
+
+aic_lm <- AIC(linear_model)
+aic_sarima <- AIC(sarima_model)
+
+res <- data.frame(
+  Model = c('Linear model','SARIMA'),
+  AIC = c(aic_lm,aic_sarima)
+)
+res
+
+#---------------------------------------------------------------------------
+# Kroskorelační funkce
+
