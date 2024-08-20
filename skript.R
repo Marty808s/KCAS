@@ -4,10 +4,9 @@ library(forecast)
 library(gridExtra)
 library(ggplot2)
 library(dynlm)
+library(TTR)
 #---------------------------------------------------------------------------
 data <- read.csv("./monthly_averages.csv")
-
-data <- monthly_averages
 
 # Převod datumu na správný datový typ Date
 data <- data %>%
@@ -33,11 +32,11 @@ ts_data <- ts(data, start = c(year(min(data$Date)), month(min(data$Date))), freq
 ts_data_quarterly <- aggregate(ts_data, nfrequency=4, FUN=mean) # kvartál - mean(ni -> ni+3)
 
 ts_data_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
-ts_data_quarterly_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 4) # kvartál - mean(ni -> ni+3)
+ts_data_quarterly_close <- aggregate(ts_data_close, nfrequency=4, FUN=mean)
 ts_data_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
-ts_data_quarterly_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 4) # kvartál - mean(ni -> ni+3)
+ts_data_quarterly_open <- aggregate(ts_data_open, nfrequency=4, FUN=mean)
 ts_data_vol <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
-ts_data_quarterly_vol <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 4) # kvartál - mean(ni -> ni+3)
+ts_data_quarterly_vol <- aggregate(ts_data_vol, nfrequency=4, FUN=mean)
 
 # výstupy
 ts_data
@@ -75,6 +74,9 @@ ts_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))),
 plot(ts_close)
 plot(ts_volume)
 plot(ts_open)
+
+# EXPONCENCIONÁLNÍ VYROVNÁNÍ - HoltWinters()
+#exp_smooth_index <- HoltWinters(ts_data_index, seasonal = "multiplicative")
 
 # grafy jedotlivých proměnných s vyhlazením
 p1 <- ggplot(data, aes(x = Date, y = Close)) +
@@ -214,18 +216,56 @@ autoplot(ts_data, series="Data") +
 #---------------------------------------------------------------------------
 # Optimální modely - podle AIC kritéria
 
-# sarima model
-sarima_model <- auto.arima(ts_data[,'Close'], seasonal=TRUE)
 
-# linear model s trendem a sezonosti
-linear_model <- tslm(ts_data[,'Close'] ~ trend + season)
+# Sarima model - optimální model
+sarima_model <- auto.arima(ts_data_quarterly_close, seasonal=TRUE)
 
+# Vypočítané hodnoty modelem
+fitted_values_arima <- fitted(sarima_model)
+fitted_values_arima
+
+# Vizualizace
+autoplot(ts_data_quarterly_close, series="Vstupní data")+
+autolayer(fitted_values_arima, series="Fitted data")
+
+#------------------------------------------------------------------------
+
+# Linear model s trendem a sezonosti
+linear_model <- tslm(ts_data_quarterly_close ~ trend + season)
+
+# Lineární model - vizualizace
+autoplot(ts_data_quarterly_close, series="Vstupní data")+
+  autolayer(linear_model$fitted.values, series="Fitted data")
+
+# ETS
+# => kvůli podmínkám - klouzavý průměr -> vyrovnání dat pro ETS
+sma_data <- SMA(ts_data_quarterly_close, n=1)
+sma_data
+summary(sma_data)
+
+# kvůli ETS - změna 0
+sma_data[1] <- 0.0000001
+
+ets_model <- ets(sma_data, model='MMM')
+ets_fitted <-fitted(ets_model)
+
+# ETS - vizualizace
+autoplot(ts_data_quarterly_close, series="Vstupní data")+
+  autolayer(ets_fitted, series="Fitted data")
+
+#!SMA predikce + pak AIC a do DF
+
+# AIC kritérium
 aic_lm <- AIC(linear_model)
 aic_sarima <- AIC(sarima_model)
+aic_ets <- AIC(ets_model)
+
+#------------------------------------------------------------------------
+# Vyhodnocení modelů
 
 res <- data.frame(
-  Model = c('Linear model','SARIMA'),
-  AIC = c(aic_lm,aic_sarima)
+  Model = c('Linear model','SARIMA', 'ETS'),
+  AIC = c(aic_lm,aic_sarima, aic_ets)
 )
 res
 
@@ -236,10 +276,10 @@ res
 # -jelikoz mame frekvenci ts<-12, tak jeden lag je jeden měsíc
 # -pro lag=3 ::::> (<3)<--0-->(3>)
 
-Close = ts_data[,'Close']
-Open = ts_data[, 'Open']
-High = ts_data[, 'High']
-Low = ts_data[, 'Low']
+Close = ts_data_quarterly[,'Close']
+Open = ts_data_quarterly[, 'Open']
+High = ts_data_quarterly[, 'High']
+Low = ts_data_quarterly[, 'Low']
 
 lag <- 4
 par(mfrow=c(3,1))
@@ -253,12 +293,20 @@ par(mfrow=c(1,1))
 # všechny hodnoty jsou nad modrou čárou, takže korelace je statisticky významná
 
 #---------------------------------------------------------------------------
-# dynamické modely
+# !dynamické modely - proč, co jak?...
 # linearni dynamický model
-dynlm <- dynlm(ts_data_quarterly_close[,'Close']l ~)
+
+m1 <- dynlm(ts_data_quarterly_close ~ decomposed_close$trend + decomposed_close$seasonal)
+summary(m1)
+#=> rozepsat výstupy podle Est, p-val...
+
+# porovnání závislostí ostatních proměnných v řadě
+m2 <- dynlm(ts_data_quarterly[,'Close'] ~ ts_data_quarterly[,'Open'] + ts_data_quarterly[,'Low'] + ts_data_quarterly[,'High'])
+summary(m2)
 
 #---------------------------------------------------------------------------
-# opt model pro tslm - + splnění předpokladů pomocí analýzy residuí příslušných modelů, úprava při nesplnění
+# kontrola předpokladů - analýza residui - úprava při nesplnění
+# est, predikce, fit arima
 # k predikci - s intervaly spolehlivosti vykreslete a výsledky komentujte
 # porovnání jednotlivých modelů
 #---------------------------------------------------------------------------
