@@ -15,6 +15,9 @@ data <- data %>%
 data <- data %>%
   arrange(Date) # seřazení datumu
 
+data <- data %>%
+  mutate(Quarter = paste(year(Date), quarter(Date), sep = " Q"))
+
 data
 
 # Date - datum den
@@ -27,7 +30,16 @@ data
 
 # Převedu data do objektu časové řady
 ts_data <- ts(data, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
-ts_data_quarterly <- aggregate(ts_data_, nfrequency=4, FUN=mean) # kvartál - mean(ni -> ni+3)
+ts_data_quarterly <- aggregate(ts_data, nfrequency=4, FUN=mean) # kvartál - mean(ni -> ni+3)
+
+ts_data_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+ts_data_quarterly_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 4) # kvartál - mean(ni -> ni+3)
+ts_data_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+ts_data_quarterly_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 4) # kvartál - mean(ni -> ni+3)
+ts_data_vol <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+ts_data_quarterly_vol <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 4) # kvartál - mean(ni -> ni+3)
+
+
 
 # výstupy
 ts_data
@@ -40,9 +52,20 @@ ts_data_quarterly
 decomposed <- decompose(ts_data)
 decomposed
 
-# vizualizace
-plot(decomposed)
+decomp_close <- decompose(ts_data_close)
+decomp_open <- decompose(ts_data_open)
+decomp_vol <- decompose(ts_data_vol)
+decomp_qclose <- decompose(ts_data_quarterly_close)
+decomp_qopen <- decompose(ts_data_quarterly_open)
+decomp_qvol <- decompose(ts_data_quarterly_vol)
 
+# vizualizace
+plot(decomp_close)
+plot(decomp_open)
+plot(decomp_vol)
+plot(decomp_qclose)
+plot(decomp_qopen)
+plot(decomp_qvol)
 #---------------------------------------------------------------------------
 # Budeme porovnávat - náhled do dat
 # 1. vytvoříme Time Series pro dané proměnné
@@ -71,7 +94,7 @@ p3 <- ggplot(data, aes(x = Date, y = Open)) +
   ggtitle("Open")
 
 # zobrazení
-grid.arrange(p1, p2, p3, ncol = 3)
+grid.arrange(p1, p2, p3, ncol = 1)
 
 #---------------------------------------------------------------------------
 # 2. Dekompozice
