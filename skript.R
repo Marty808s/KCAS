@@ -98,9 +98,9 @@ grid.arrange(p1, p2, p3, ncol = 1)
 #---------------------------------------------------------------------------
 # 2. Dekompozice
 # => na quarterly
-decomposed_close <- decompose(ts_close, type = "multiplicative")
-decomposed_volume <- decompose(ts_volume, type = "multiplicative")
-decomposed_open <- decompose(ts_open, type = "multiplicative")
+decomposed_close <- decompose(ts_data_quarterly_close, type = "multiplicative")
+decomposed_volume <- decompose(ts_data_quarterly_vol, type = "multiplicative")
+decomposed_open <- decompose(ts_data_quarterly_open, type = "multiplicative")
 # plotneme pro vizualizaci trendu, sezony....
 
 
