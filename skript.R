@@ -7,6 +7,8 @@ library(ggplot2)
 #---------------------------------------------------------------------------
 data <- read.csv("./monthly_averages.csv")
 
+data <- monthly_averages
+
 # Převod datumu na správný datový typ Date
 data <- data %>%
   mutate(Date = as.Date(Date, format="%Y-%m-%d"))
@@ -14,8 +16,6 @@ data <- data %>%
   arrange(Date) # seřazení datumu
 
 data
-
-#TO:DO - čištění dat HoltWinters()?
 
 # Date - datum den
 # Open - Cena otevření
@@ -26,18 +26,19 @@ data
 # Volume - Suma, za kolik se tradovalo v daný den
 
 # Převedu data do objektu časové řady
-ts_data <- ts(data, start = c(2012, 1), frequency = 12)  # roční pro všechny hodnoty Mety
-ts_data
-
-ts_data <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Close
-ts_data_quarterly <- aggregate(ts_data, nfrequency=4, FUN=mean) # kvartál - mean(ni -> ni+3)
+ts_data <- ts(data, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+ts_data_quarterly <- aggregate(ts_data_, nfrequency=4, FUN=mean) # kvartál - mean(ni -> ni+3)
 
 # výstupy
 ts_data
 ts_data_quarterly
 
+#plot(ts_data_quarterly)
+#plot(ts_data)
+
 # dekompozice časové řady
 decomposed <- decompose(ts_data)
+decomposed
 
 # vizualizace
 plot(decomposed)
@@ -47,7 +48,7 @@ plot(decomposed)
 # 1. vytvoříme Time Series pro dané proměnné
 ts_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Close
 ts_volume <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Volume
-ts_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Volume
+ts_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Open
 
 plot(ts_close)
 plot(ts_volume)
@@ -90,7 +91,7 @@ plot(decomposed_open)
 
 # Autokorelační funkce
 residual_close <- decomposed_close$random
-residual_close <- na.omit(residual_close)
+residual_close <- na.omit(residual_close) #na.omit() -> vamže případne NA hodnoty
 acf(residual_close, main="ACF pro close")
 
 
@@ -206,5 +207,31 @@ res <- data.frame(
 res
 
 #---------------------------------------------------------------------------
-# Kroskorelační funkce
+# TO:DO 
+# Kroskorelační funkce - pro mesíční srovnání - freq = 12
+# -jak spolu ostatní řady souvisí a ovluvňují se navzájem?
+# -jelikoz mame frekvenci ts<-12, tak jeden lag je jeden měsíc
+# -pro lag=3 ::::> (<3)<--0-->(3>)
+
+Close = ts_data[,'Close']
+Open = ts_data[, 'Open']
+High = ts_data[, 'High']
+Low = ts_data[, 'Low']
+
+lag <- 12
+par(mfrow=c(3,1))
+ccf(Close, Open,na.action =na.pass, lag=lag)
+ccf(Close, High,na.action =na.pass, lag=lag)
+ccf(Close, Low,na.action =na.pass, lag=lag)
+par(mfrow=c(1,1))
+
+# s posunem aý 3 měsíce vidíme stále velkou korelaci, ta však postupně klesá
+# všechny hodnoty jsou nad modrou čárou, takže korelace je statisticky významná
+
+#---------------------------------------------------------------------------
+# dynamické modely
+# opt model pro tslm - + splnění předpokladů pomocí analýzy residuí příslušných modelů, úprava při nesplnění
+# k predikci - s intervaly spolehlivosti vykreslete a výsledky komentujte
+# porovnání jednotlivých modelů
+#---------------------------------------------------------------------------
 
