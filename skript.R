@@ -3,7 +3,7 @@ library(lubridate)
 library(forecast)
 library(gridExtra)
 library(ggplot2)
-
+library(dynlm)
 #---------------------------------------------------------------------------
 data <- read.csv("./monthly_averages.csv")
 
@@ -39,8 +39,6 @@ ts_data_quarterly_open <- ts(data$Open, start = c(year(min(data$Date)), month(mi
 ts_data_vol <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
 ts_data_quarterly_vol <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 4) # kvartál - mean(ni -> ni+3)
 
-
-
 # výstupy
 ts_data
 ts_data_quarterly
@@ -55,6 +53,7 @@ decomposed
 decomp_close <- decompose(ts_data_close)
 decomp_open <- decompose(ts_data_open)
 decomp_vol <- decompose(ts_data_vol)
+
 decomp_qclose <- decompose(ts_data_quarterly_close)
 decomp_qopen <- decompose(ts_data_quarterly_open)
 decomp_qvol <- decompose(ts_data_quarterly_vol)
@@ -98,6 +97,7 @@ grid.arrange(p1, p2, p3, ncol = 1)
 
 #---------------------------------------------------------------------------
 # 2. Dekompozice
+# => na quarterly
 decomposed_close <- decompose(ts_close, type = "multiplicative")
 decomposed_volume <- decompose(ts_volume, type = "multiplicative")
 decomposed_open <- decompose(ts_open, type = "multiplicative")
@@ -111,6 +111,7 @@ plot(decomposed_open)
 
 #---------------------------------------------------------------------------
 # 3. Analýza
+# => převod na quartaly - kvůli season
 
 # Autokorelační funkce
 residual_close <- decomposed_close$random
@@ -118,12 +119,11 @@ residual_close <- na.omit(residual_close) #na.omit() -> vamže případne NA hod
 acf(residual_close, main="ACF pro close")
 
 
-residual_open <- decomposed_open$random
+residual_open <- decomp_qopen$random
 residual_open <- na.omit(residual_open)
 acf(residual_open, main="ACF pro open")
 # Open a close vykazují téměř stejné hodnoty autokorelace, téměř se nedostaneme 
 # nad prahovou hodnotu
-
 
 
 residual_volume <- decomposed_volume$random
@@ -215,10 +215,10 @@ autoplot(ts_data, series="Data") +
 # Optimální modely - podle AIC kritéria
 
 # sarima model
-sarima_model <- auto.arima(ts_data, seasonal=TRUE)
+sarima_model <- auto.arima(ts_data[,'Close'], seasonal=TRUE)
 
 # linear model s trendem a sezonosti
-linear_model <- tslm(ts_data ~ trend + season)
+linear_model <- tslm(ts_data[,'Close'] ~ trend + season)
 
 aic_lm <- AIC(linear_model)
 aic_sarima <- AIC(sarima_model)
@@ -241,19 +241,21 @@ Open = ts_data[, 'Open']
 High = ts_data[, 'High']
 Low = ts_data[, 'Low']
 
-lag <- 12
+lag <- 4
 par(mfrow=c(3,1))
 ccf(Close, Open,na.action =na.pass, lag=lag)
 ccf(Close, High,na.action =na.pass, lag=lag)
 ccf(Close, Low,na.action =na.pass, lag=lag)
 par(mfrow=c(1,1))
 
-# s posunem aý 3 měsíce vidíme stále velkou korelaci, ta však postupně klesá
+# => přepsat...
+# s posunem  3 měsíce vidíme stále velkou korelaci, ta však postupně klesá
 # všechny hodnoty jsou nad modrou čárou, takže korelace je statisticky významná
 
 #---------------------------------------------------------------------------
 # dynamické modely
-y
+# linearni dynamický model
+dynlm <- dynlm(ts_data_quarterly_close[,'Close']l ~)
 
 #---------------------------------------------------------------------------
 # opt model pro tslm - + splnění předpokladů pomocí analýzy residuí příslušných modelů, úprava při nesplnění
