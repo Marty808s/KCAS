@@ -230,6 +230,9 @@ par(mfrow=c(1,1))
 
 #---------------------------------------------------------------------------
 # dynamické modely
+y
+
+#---------------------------------------------------------------------------
 # opt model pro tslm - + splnění předpokladů pomocí analýzy residuí příslušných modelů, úprava při nesplnění
 # k predikci - s intervaly spolehlivosti vykreslete a výsledky komentujte
 # porovnání jednotlivých modelů
