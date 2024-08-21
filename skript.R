@@ -6,6 +6,7 @@ library(ggplot2)
 library(dynlm)
 library(TTR)
 #---------------------------------------------------------------------------
+
 data <- read.csv("./monthly_averages.csv")
 
 # Převod datumu na správný datový typ Date
@@ -82,7 +83,9 @@ plot(decomp_vol)
 plot(decomp_qclose)
 plot(decomp_qopen)
 plot(decomp_qvol)
+
 #---------------------------------------------------------------------------
+
 # Budeme porovnávat - náhled do dat
 # 1. vytvoříme Time Series pro dané proměnné
 ts_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Close
@@ -388,6 +391,7 @@ res <- data.frame(
   Model = c('Linear model','SARIMA', 'ETS'),
   AIC = c(aic_lm,aic_sarima, aic_ets)
 )
+
 res
 
 #---------------------------------------------------------------------------
