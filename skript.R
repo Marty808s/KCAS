@@ -233,6 +233,8 @@ autoplot(ts_data, series="Data") +
 #---------------------------------------------------------------------------
 # Modely
 
+# TO:DO SMA model!
+
 # Sarima model - optimální model
 sarima_model <- auto.arima(ts_data_quarterly_close, seasonal=TRUE)
 
