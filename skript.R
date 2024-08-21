@@ -42,8 +42,26 @@ ts_data_quarterly_vol <- aggregate(ts_data_vol, nfrequency=4, FUN=mean)
 ts_data
 ts_data_quarterly
 
-#plot(ts_data_quarterly)
-#plot(ts_data)
+"""
+Chtěl jem doplnit první Q1 v 2012, ale ta rostoucí trend je fakt dost, takže to asi jebu... Konec konců to bude menší odchylka jak průměrování Q1
+
+Qtr1_Open <- window(ts_data_quarterly[, 'Open'], start = c(2012, 1), end = c(2014, 1), frequency = 4)[cycle(ts_data_quarterly) == 4]
+Qtr1_Open
+Qtr1_Close <- window(ts_data_quarterly[, 'Close'], start = c(2012, 1), end = c(2014, 1), frequency = 4)[cycle(ts_data_quarterly) == 4]
+Qtr1_High <- window(ts_data_quarterly[, 'High'], start = c(2012, 1), end = c(2014, 1), frequency = 4)[cycle(ts_data_quarterly) == 4]
+Qtr1_AdjClose <- window(ts_data_quarterly[, 'Adj.Close'], start = c(2012, 1), end = c(2014, 1), frequency = 4)[cycle(ts_data_quarterly) == 4]
+Qtr1_Volume <- window(ts_data_quarterly[, 'Volume'], start = c(2012, 1), end = c(2014, 1), frequency = 4)[cycle(ts_data_quarterly) == 4]
+
+ts_data_quarterly[1, 'Open'] <- mean(Qtr1_Open, na.rm = TRUE)
+ts_data_quarterly[1, 'Close'] <- mean(Qtr1_Close, na.rm = TRUE)
+ts_data_quarterly[1, 'High'] <- mean(Qtr1_High, na.rm = TRUE)
+ts_data_quarterly[1, 'Adj.Close'] <- mean(Qtr1_AdjClose, na.rm = TRUE)
+ts_data_quarterly[1, 'Volume'] <- mean(Qtr1_Volume, na.rm = TRUE)
+ts_data_quarterly
+"""
+
+plot(ts_data_quarterly)
+plot(ts_data)
 
 # dekompozice časové řady
 decomposed <- decompose(ts_data)
@@ -203,8 +221,7 @@ grid.arrange(p7, p8, p9, ncol = 1)
 
 #---------------------------------------------------------------------------
 # SARIMA
-arima <- auto.arima(ts_data, seasonal=TRUE)
-
+sarima <- auto.arima(ts_data, seasonal=TRUE)
 fitted_values_index <- fitted(arima)
 
 autoplot(ts_data, series="Data") +
@@ -214,8 +231,7 @@ autoplot(ts_data, series="Data") +
   scale_colour_manual(values=c("Data"="blue","Fitted"="red"))
 
 #---------------------------------------------------------------------------
-# Optimální modely - podle AIC kritéria
-
+# Modely
 
 # Sarima model - optimální model
 sarima_model <- auto.arima(ts_data_quarterly_close, seasonal=TRUE)
@@ -227,8 +243,6 @@ fitted_values_arima
 # Vizualizace
 autoplot(ts_data_quarterly_close, series="Vstupní data")+
 autolayer(fitted_values_arima, series="Fitted data")
-
-#------------------------------------------------------------------------
 
 # Linear model s trendem a sezonosti
 linear_model <- tslm(ts_data_quarterly_close ~ trend + season)
@@ -253,21 +267,7 @@ ets_fitted <-fitted(ets_model)
 autoplot(ts_data_quarterly_close, series="Vstupní data")+
   autolayer(ets_fitted, series="Fitted data")
 
-#!SMA predikce + pak AIC a do DF
-
-# AIC kritérium
-aic_lm <- AIC(linear_model)
-aic_sarima <- AIC(sarima_model)
-aic_ets <- AIC(ets_model)
-
-#------------------------------------------------------------------------
-# Vyhodnocení modelů
-
-res <- data.frame(
-  Model = c('Linear model','SARIMA', 'ETS'),
-  AIC = c(aic_lm,aic_sarima, aic_ets)
-)
-res
+#!SMA predikce
 
 #---------------------------------------------------------------------------
 # TO:DO 
@@ -306,8 +306,87 @@ summary(m2)
 
 #---------------------------------------------------------------------------
 # kontrola předpokladů - analýza residui - úprava při nesplnění
-# est, predikce, fit arima
-# k predikci - s intervaly spolehlivosti vykreslete a výsledky komentujte
-# porovnání jednotlivých modelů
+#H0: autokorelace je nulová
+#H1: autokorelace není nulová
+
+# residua odhadnutého modelu by mela být nezávislá -> Ljung-Box neboli Box-Pierce
+
+# SARIMA
+checkresiduals(ets_fitted)
+# p-value < 2.2e-16 => ZAMÍTÁME H0
+
+# LM
+checkresiduals(linear_model$fitted.values)
+# p-value < 2.2e-16 => ZAMÍTÁME H0
+
+# EST
+checkresiduals(fitted_values_arima)
+# p-value < 2.2e-16 => ZAMÍTÁME H0
+
+#V modelech jsou přítomné závislosti zbytku - Autokorelace
+
+#---------------------------------------------------------------------------
+# Predikce modelů - 12 pozorování
+# est, predikce, fit arima, s intervaly spolehlivosti vykreslete a výsledky komentujte
+
+# TO:DO - dopsat asi ze summary?;
+
+#EST
+pred_est <- forecast(ets_model, h=12)
+autoplot(pred_est)
+
+summary(pred_est)
+
+"""
+Error measures:
+     ME     RMSE      MAE        MPE      MAPE      MASE     ACF1
+7.220935 48.58932 32.38335 -209271066 209271086 0.5523114 0.655942
+
+"""
+
+#LM s Trend a Season
+pred_tslm<- forecast(linear_model, h=12)
+autoplot(pred_tslm)
+
+summary(pred_tslm)
+
+"""
+Error measures:
+        ME     RMSE      MAE    MPE MAPE    MASE     ACF1
+3.710184e-17 47.81943 27.63394 -Inf  Inf 0.4713083 0.704184
+
+Coefficients:
+(Intercept)        trend      season2      season3      season4  
+      4.072        6.241       -5.165        3.986       -4.610  
+
+"""
+
+#Sarima
+pred_sarima <- forecast(sarima_model, h=12)
+autoplot(pred_sarima)
+
+summary(pred_sarima)
+
+"""
+Error measures:
+        ME     RMSE      MAE  MPE   MAPE    MASE      ACF1
+-0.08169654 26.95386 16.43565 -Inf  Inf 0.2803167 0.1103005
+"""
+#------------------------------------------------------------------------
+
+#Porovnání jednotlivých modelů
+
+# AIC kritérium
+aic_lm <- AIC(linear_model)
+aic_sarima <- AIC(sarima_model)
+aic_ets <- AIC(ets_model)
+
+# Vyhodnocení modelů
+res <- data.frame(
+  Model = c('Linear model','SARIMA', 'ETS'),
+  AIC = c(aic_lm,aic_sarima, aic_ets)
+)
+res
+
 #---------------------------------------------------------------------------
 
