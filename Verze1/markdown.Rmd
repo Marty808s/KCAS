@@ -1,0 +1,402 @@
+---
+title: "Analýza datasetu Meta Stock Prices"
+output: html_document
+author: "Jan Viola, Martin Vlnas"
+date: "2024-08-19"
+---
+V této práci provedeme analýzu časových řad, které obsahují historické ceny akcií společnosti Meta. Data zahrnují denní otevírací, nejvyšší, nejnižší, uzavírací ceny, objemy obchodů a upravené uzavírací ceny. Provedeme dekompozici časové řady, vyhlazení dat pomocí exponenciálních metod a vytvoříme předpovědi pro budoucí vývoj.
+
+# Načtení a příprava dat
+Dataset obsahuje denní ceny akcií Meta od roku 2012. Nejdříve načteme data a převedeme sloupec s datem na správný datový typ Date. Poté data seřadíme podle data. Data jsme předem upravili na měsíční pomocí průměrných hodnot za období (měsíc).
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(lubridate)
+library(forecast)
+library(gridExtra)
+library(ggplot2)
+library(dynlm)
+library(TTR)
+
+```
+```{r}
+data <- read.csv("./monthly_averages.csv")
+
+# Převod datumu na správný datový typ Date
+data <- data %>%
+  mutate(Date = as.Date(Date, format="%Y-%m-%d"))
+data <- data %>%
+  arrange(Date) # seřazení datumu
+```
+## Dataset obsahuje následující sloupce:
+
+* Date: Datum obchodního dne.
+* Open: Otevírací cena akcie.
+* High: Nejvyšší cena dosažená během obchodního dne.
+* Low: Nejnižší cena dosažená během obchodního dne.
+* Close: Cena akcie při uzavření obchodního dne.
+* Adj. Close: Upravená uzavírací cena, která bere v úvahu dividendy a rozdělení akcií.
+* Volume: Celkový objem obchodů za den.
+
+# Převod dat na časovou řadu
+Pro analýzu časové řady převedeme data na objekt časové řady (ts). Začneme s měsíční frekvencí, abychom mohli analyzovat dlouhodobé trendy.
+```{r}
+# Převedu data do objektu časové řady
+ts_data <- ts(data, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+ts_data_quarterly <- aggregate(ts_data, nfrequency=4, FUN=mean) # kvartál - mean(ni -> ni+3)
+
+ts_data_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+ts_data_quarterly_close <- aggregate(ts_data_close, nfrequency=4, FUN=mean)
+ts_data_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+ts_data_quarterly_open <- aggregate(ts_data_open, nfrequency=4, FUN=mean)
+ts_data_vol <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+ts_data_quarterly_vol <- aggregate(ts_data_vol, nfrequency=4, FUN=mean)
+
+# výstupy
+ts_data
+ts_data_quarterly
+```
+# Analýza
+Časové řady jsou sekvence datových bodů měřených v čase. V našem případě jde o měsíční ceny akcií společnosti Meta. Při analýze časových řad nás zajímají tři hlavní složky:
+
+* Trend: Dlouhodobý směr pohybu ceny, který může být rostoucí, klesající nebo stabilní.
+* Sezónnost: Opakující se vzorce chování v pravidelných intervalech, často spojené s ročními obdobími nebo jinými cykly.
+* Náhodná složka (rezidua): Náhodné fluktuace, které nelze vysvětlit trendem ani sezónností.
+```{r}
+decomposed <- decompose(ts_data)
+decomposed
+
+decomp_close <- decompose(ts_data_close)
+decomp_open <- decompose(ts_data_open)
+decomp_vol <- decompose(ts_data_vol)
+
+decomp_qclose <- decompose(ts_data_quarterly_close)
+decomp_qopen <- decompose(ts_data_quarterly_open)
+decomp_qvol <- decompose(ts_data_quarterly_vol)
+
+# vizualizace
+plot(decomp_close)
+plot(decomp_open)
+plot(decomp_vol)
+plot(decomp_qclose)
+plot(decomp_qopen)
+plot(decomp_qvol)
+```
+
+
+# Dekompozice
+Dekompozice časové řady je technika, která odděluje jednotlivé komponenty časové řady, což nám umožňuje lépe porozumět tomu, jak jednotlivé faktory přispívají k celkovému vývoji ceny akcií. V našem případě sledujeme, jaký podíl na změnách ceny má dlouhodobý trend a sezónní výkyvy.
+
+
+# Vizualizace jednotlivých proměnných
+Vytvoříme grafy pro jednotlivé proměnné Close, Volume a Open, které zobrazují původní data a jejich vyhlazení pomocí metody LOESS. LOESS (Locally Estimated Scatterplot Smoothing) je metoda pro vyhlazení časových řad a nalezení lokálních vzorců v datech. Je užitečná pro vizualizaci trendů a odstranění krátkodobých fluktuací.
+```{r}
+# Budeme porovnávat - náhled do dat
+# 1. vytvoříme Time Series pro dané proměnné
+ts_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Close
+ts_volume <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Volume
+ts_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Volume
+
+plot(ts_close)
+plot(ts_volume)
+plot(ts_open)
+
+# grafy jedotlivých proměnných s vyhlazením
+p1 <- ggplot(data, aes(x = Date, y = Close)) +
+  geom_line(color = "blue") +
+  geom_smooth(method = "loess", color = "red", se = FALSE, size = 0.5) +
+  ggtitle("Close")
+
+p2 <- ggplot(data, aes(x = Date, y = Volume)) +
+  geom_line(color = "blue") +
+  geom_smooth(method = "loess", color = "red", se = FALSE, size = 0.5) +
+  ggtitle("Volume")
+
+p3 <- ggplot(data, aes(x = Date, y = Open)) +
+  geom_line(color = "blue") +
+  geom_smooth(method = "loess", color = "red", se = FALSE, size = 0.5) +
+  ggtitle("Open")
+
+# zobrazení
+grid.arrange(p1, p2, p3, ncol = 1)
+
+```
+```{r}
+# 2. Dekompozice
+decomposed_close <- decompose(ts_close, type = "multiplicative")
+decomposed_volume <- decompose(ts_volume, type = "multiplicative")
+decomposed_open <- decompose(ts_open, type = "multiplicative")
+# plotneme pro vizualizaci trendu, sezony....
+
+
+# Vizualizace dekompozice
+plot(decomposed_close)
+plot(decomposed_volume)
+plot(decomposed_open)
+
+```
+
+
+# Autokorelační funkce
+Následující část analyzuje autokorelační funkce reziduí po dekompozici časových řad.
+Autokorelační funkce (ACF) měří, jak jsou hodnoty časové řady v různých časech navzájem korelované. Pokud jsou hodnoty v řadě silně korelované, můžeme je použít pro předpověď budoucích hodnot. Vysoké hodnoty ACF na určitém zpoždění mohou indikovat sezónní cykly nebo přetrvávající trendy v datech.
+```{r}
+# 3. Analýza
+
+# Autokorelační funkce
+residual_close <- decomposed_close$random
+residual_close <- na.omit(residual_close)
+acf(residual_close, main="ACF pro close")
+
+
+residual_open <- decomposed_open$random
+residual_open <- na.omit(residual_open)
+acf(residual_open, main="ACF pro open")
+# Open a close vykazují téměř stejné hodnoty autokorelace, téměř se nedostaneme 
+# nad prahovou hodnotu
+
+
+
+residual_volume <- decomposed_volume$random
+residual_volume <- na.omit(residual_volume)
+acf(residual_volume, main="ACF pro volume")
+# U složky volume můžeme pozorovat významnou autokorelaci, která vyznačuje
+# přítomnost krátkodobých závislostí.
+# V dlouhodobém trendu se již nacházíme pod prahovou hodnotou 
+```
+# Jednoduché exponenciální vyrovnání
+Pro vyhlazení časových řad použijeme metodu jednoduchého exponenciálního vyrovnání (Simple Exponential Smoothing).
+```{r}
+# Jednoduché exponenciální vyrovnání
+ses_close <- ses(data$Close, h = 12)
+ses_open <- ses(data$Open, h = 12)
+ses_volume <- ses(data$Volume, h = 12)
+
+# Nahrání výsledků k půlvodnímu datasetu
+data <- data %>%
+  mutate(SES_Close = fitted(ses_close),
+         SES_Open = fitted(ses_open),
+         SES_Volume = fitted(ses_volume))
+
+# Vizualizace
+p4 <- ggplot(data, aes(x = Date)) +
+  geom_line(aes(y = Close), color = "blue") +
+  geom_line(aes(y = SES_Close), color = "purple", size = 1) +
+  labs(title = "Close s vyhazením Simple Exponential Smoothing", x = "Date", y = "Close Price")
+
+p5 <- ggplot(data, aes(x = Date)) +
+  geom_line(aes(y = Volume), color = "blue") +
+  geom_line(aes(y = SES_Volume), color = "purple", size = 1) +
+  labs(title = "Volume s vyhlazením Simple Exponential Smoothing", x = "Date", y = "Volume")
+
+p6 <- ggplot(data, aes(x = Date)) +
+  geom_line(aes(y = Open), color = "blue") +
+  geom_line(aes(y = SES_Open), color = "purple", size = 1) +
+  labs(title = "Open Price s vyhlazením Simple Exponential Smoothing", x = "Date", y = "Open Price")
+
+# Zobrazení grafů vedle sebe
+grid.arrange(p4, p5, p6, ncol = 1)
+```
+
+
+# Modelování sezónnosti pomocí TSLM
+Funkce tslm (Time Series Linear Model) v R slouží k vytváření lineárních modelů pro časové řady. V našem případě modelujeme jednotlivé časové řady (Close, Open, a Volume) jako funkce trendu a sezóny.
+
+* Trend: Reprezentuje dlouhodobou změnu v časové řadě. Tento model se snaží zachytit, zda komponenta modelu dlouhodobě roste, klesá, nebo zůstává stabilní.
+* Sezóna: Sezónní komponenta zachycuje pravidelně se opakující vzorce, které se vyskytují v časové řadě. Tyto vzorce mohou být způsobeny například ročními obdobími, měsíčními cykly nebo jinými pravidelnými faktory.
+```{r}
+# Vytvoření modelu sezónnosti pomocí tslm
+
+# Model sezónnosti pro Close
+model_close <- tslm(ts_close ~ trend + season)
+summary(model_close)
+
+# Model sezónnosti pro Open
+model_open <- tslm(ts_open ~ trend + season)
+summary(model_open)
+
+# Model sezónnosti pro Volume
+model_volume <- tslm(ts_volume ~ trend + season)
+summary(model_volume)
+```
+
+
+# Předpověď pomocí modelu sezónnosti
+Po vytvoření modelů použijeme funkci forecast, která nám umožní předpovědět budoucí hodnoty na základě modelu sezónnosti.
+
+Předpověď časové řady na základě modelu sezónnosti nám umožňuje odhadnout budoucí vývoj. Funkce forecast generuje předpovědi pro budoucí období na základě trendu a sezónní složky identifikované v modelu.
+
+Horizont předpovědi (h = 12): Určuje, kolik časových období chceme předpovědět. V našem případě je to 12 měsíců.
+Intervalu spolehlivosti: Funkce forecast také vypočítává interval spolehlivosti, což je rozsah hodnot, ve kterém by se s určitou pravděpodobností měly nacházet skutečné budoucí hodnoty.
+```{r}
+# Předpověď pomocí modelu sezónnosti
+fc_close <- forecast(model_close, h = 12)
+fc_open <- forecast(model_open, h = 12)
+fc_volume <- forecast(model_volume, h = 12)
+
+
+# Vizualizace výsledků modelu a předpovědi
+p7 <- autoplot(fc_close) +
+  labs(title = "Předpověď pro Close Price", x = "Date", y = "Close Price")
+
+p8 <- autoplot(fc_open) +
+  labs(title = "Předpověď pro Open Price", x = "Date", y = "Open Price")
+
+p9 <- autoplot(fc_volume) +
+  labs(title = "Předpověď pro Volume", x = "Date", y = "Volume")
+
+# Zobrazení grafů vedle sebe
+grid.arrange(p7, p8, p9, ncol = 1)
+
+```
+
+
+# Modely SARIMA a ETS
+V této části se zaměříme na pokročilejší modely pro analýzu časových řad jako jsou SARIMA, ETS a SMA.
+
+
+# SARIMA
+SARIMA je rozšíření modelu ARIMA o sezónní komponenty.
+
+```{r}
+# Sarima model - optimální model
+sarima_model <- auto.arima(ts_data_quarterly_close, seasonal=TRUE)
+
+# Vypočítané hodnoty modelem
+fitted_values_arima <- fitted(sarima_model)
+fitted_values_arima
+
+# Vizualizace
+autoplot(ts_data_quarterly_close, series="Vstupní data")+
+autolayer(fitted_values_arima, series="Fitted data")
+
+# Linear model s trendem a sezonosti
+linear_model <- tslm(ts_data_quarterly_close ~ trend + season)
+
+# Lineární model - vizualizace
+autoplot(ts_data_quarterly_close, series="Vstupní data")+
+  autolayer(linear_model$fitted.values, series="Fitted data")
+autoplot(ts_data, series="Data") +
+  autolayer(fitted_values_arima, series="Fitted") +
+  labs(title = "Model SARIMA - Index", x = "Čas", y = "Index") +
+  theme_minimal() +
+  scale_colour_manual(values=c("Data"="blue","Fitted"="red"))
+```
+
+
+# ETS
+
+
+```{r}
+# => kvůli podmínkám - klouzavý průměr -> vyrovnání dat pro ETS
+sma_data <- SMA(ts_data_quarterly_close, n=1)
+sma_data
+summary(sma_data)
+
+# kvůli ETS - změna 0
+sma_data[1] <- 0.0000001
+
+ets_model <- ets(sma_data, model='MMM')
+ets_fitted <-fitted(ets_model)
+
+# ETS - vizualizace
+autoplot(ts_data_quarterly_close, series="Vstupní data")+
+  autolayer(ets_fitted, series="Fitted data")
+
+```
+
+
+# SMA vyhlazení
+Klouzavý průměr (SMA) je účinný nástroj pro vyhlazení časových řad. SMA průměruje předchozí hodnoty a vytváří tak vyrovnaný trend.
+```{r}
+# SMA pro Close
+sma_close <- SMA(data$Close, n = 3) # 3-měsíční klouzavý průměr
+
+# Vizualizace SMA modelu
+ggplot(data, aes(x = Date)) +
+  geom_line(aes(y = Close), color = "blue") +
+  geom_line(aes(y = sma_close), color = "red", size = 1) +
+  labs(title = "Close Price s vyhlazením SMA", x = "Date", y = "Close Price")
+```
+
+
+# Kroskorelační Funkce
+Analyzujeme kroskorelace mezi různými proměnnými časových řad.
+
+```{r}
+Close = ts_data_quarterly[,'Close']
+Open = ts_data_quarterly[, 'Open']
+High = ts_data_quarterly[, 'High']
+Low = ts_data_quarterly[, 'Low']
+
+lag <- 4
+par(mfrow=c(3,1))
+ccf(Close, Open,na.action =na.pass, lag=lag)
+ccf(Close, High,na.action =na.pass, lag=lag)
+ccf(Close, Low,na.action =na.pass, lag=lag)
+par(mfrow=c(1,1))
+```
+# kontrola předpokladů - analýza residui - úprava při nesplnění
+* H0: autokorelace je nulová
+* #H1: autokorelace není nulová
+
+residua odhadnutého modelu by mela být nezávislá -> Ljung-Box neboli Box-Pierce
+
+
+```{r}
+# SARIMA
+checkresiduals(ets_fitted)
+# p-value < 2.2e-16 => ZAMÍTÁME H0
+
+# LM
+checkresiduals(linear_model$fitted.values)
+# p-value < 2.2e-16 => ZAMÍTÁME H0
+
+# EST
+checkresiduals(fitted_values_arima)
+# p-value < 2.2e-16 => ZAMÍTÁME H0
+```
+
+
+V modelech jsou přítomné závislosti zbytku - Autokorelace
+
+# Predikce EST Modelu
+```{r}
+pred_est <- forecast(ets_model, h=12)
+autoplot(pred_est)
+
+summary(pred_est)
+```
+# Predikce TSLM Modelu
+```{r}
+pred_tslm<- forecast(linear_model, h=12)
+autoplot(pred_tslm)
+
+summary(pred_tslm)
+```
+# Predikce SARIMA Modelu
+```{r}
+pred_sarima <- forecast(sarima_model, h=12)
+autoplot(pred_sarima)
+
+summary(pred_sarima)
+```
+# Porovnání jednotlivých modelů
+```{r}
+# AIC kritérium
+aic_lm <- AIC(linear_model)
+aic_sarima <- AIC(sarima_model)
+aic_ets <- AIC(ets_model)
+
+# Vyhodnocení modelů
+res <- data.frame(
+  Model = c('Linear model','SARIMA', 'ETS'),
+  AIC = c(aic_lm,aic_sarima, aic_ets)
+)
+
+res
+```
+
+
+# Závěr
+V této seminární práci, ve které jsme analyzovali hodnoty akcií společnosti Meta nám pro cenu akcie při uzavření burzy v jednotlivých kvartálech vyšel podle AIC kritéria jako nejvhodnější model SARIMA.
