@@ -15,6 +15,8 @@ library(lubridate)
 library(forecast)
 library(gridExtra)
 library(ggplot2)
+library(dynlm)
+library(TTR)
 
 ```
 ```{r}
@@ -40,11 +42,15 @@ data <- data %>%
 Pro analýzu časové řady převedeme data na objekt časové řady (ts). Začneme s měsíční frekvencí, abychom mohli analyzovat dlouhodobé trendy.
 ```{r}
 # Převedu data do objektu časové řady
-ts_data <- ts(data, start = c(2012, 1), frequency = 12)  # roční pro všechny hodnoty Mety
-ts_data
-
-ts_data <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Close
+ts_data <- ts(data, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
 ts_data_quarterly <- aggregate(ts_data, nfrequency=4, FUN=mean) # kvartál - mean(ni -> ni+3)
+
+ts_data_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+ts_data_quarterly_close <- aggregate(ts_data_close, nfrequency=4, FUN=mean)
+ts_data_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+ts_data_quarterly_open <- aggregate(ts_data_open, nfrequency=4, FUN=mean)
+ts_data_vol <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+ts_data_quarterly_vol <- aggregate(ts_data_vol, nfrequency=4, FUN=mean)
 
 # výstupy
 ts_data
@@ -57,11 +63,24 @@ ts_data_quarterly
 * Sezónnost: Opakující se vzorce chování v pravidelných intervalech, často spojené s ročními obdobími nebo jinými cykly.
 * Náhodná složka (rezidua): Náhodné fluktuace, které nelze vysvětlit trendem ani sezónností.
 ```{r}
-# dekompozice časové řady
 decomposed <- decompose(ts_data)
+decomposed
+
+decomp_close <- decompose(ts_data_close)
+decomp_open <- decompose(ts_data_open)
+decomp_vol <- decompose(ts_data_vol)
+
+decomp_qclose <- decompose(ts_data_quarterly_close)
+decomp_qopen <- decompose(ts_data_quarterly_open)
+decomp_qvol <- decompose(ts_data_quarterly_vol)
 
 # vizualizace
-plot(decomposed)
+plot(decomp_close)
+plot(decomp_open)
+plot(decomp_vol)
+plot(decomp_qclose)
+plot(decomp_qopen)
+plot(decomp_qvol)
 ```
 
 
@@ -230,3 +249,154 @@ p9 <- autoplot(fc_volume) +
 grid.arrange(p7, p8, p9, ncol = 1)
 
 ```
+
+
+# Modely SARIMA a ETS
+V této části se zaměříme na pokročilejší modely pro analýzu časových řad jako jsou SARIMA, ETS a SMA.
+
+
+# SARIMA
+SARIMA je rozšíření modelu ARIMA o sezónní komponenty.
+
+```{r}
+# Sarima model - optimální model
+sarima_model <- auto.arima(ts_data_quarterly_close, seasonal=TRUE)
+
+# Vypočítané hodnoty modelem
+fitted_values_arima <- fitted(sarima_model)
+fitted_values_arima
+
+# Vizualizace
+autoplot(ts_data_quarterly_close, series="Vstupní data")+
+autolayer(fitted_values_arima, series="Fitted data")
+
+# Linear model s trendem a sezonosti
+linear_model <- tslm(ts_data_quarterly_close ~ trend + season)
+
+# Lineární model - vizualizace
+autoplot(ts_data_quarterly_close, series="Vstupní data")+
+  autolayer(linear_model$fitted.values, series="Fitted data")
+autoplot(ts_data, series="Data") +
+  autolayer(fitted_values_arima, series="Fitted") +
+  labs(title = "Model SARIMA - Index", x = "Čas", y = "Index") +
+  theme_minimal() +
+  scale_colour_manual(values=c("Data"="blue","Fitted"="red"))
+```
+
+
+# ETS
+
+
+```{r}
+# => kvůli podmínkám - klouzavý průměr -> vyrovnání dat pro ETS
+sma_data <- SMA(ts_data_quarterly_close, n=1)
+sma_data
+summary(sma_data)
+
+# kvůli ETS - změna 0
+sma_data[1] <- 0.0000001
+
+ets_model <- ets(sma_data, model='MMM')
+ets_fitted <-fitted(ets_model)
+
+# ETS - vizualizace
+autoplot(ts_data_quarterly_close, series="Vstupní data")+
+  autolayer(ets_fitted, series="Fitted data")
+
+```
+
+
+# SMA vyhlazení
+Klouzavý průměr (SMA) je účinný nástroj pro vyhlazení časových řad. SMA průměruje předchozí hodnoty a vytváří tak vyrovnaný trend.
+```{r}
+# SMA pro Close
+sma_close <- SMA(data$Close, n = 3) # 3-měsíční klouzavý průměr
+
+# Vizualizace SMA modelu
+ggplot(data, aes(x = Date)) +
+  geom_line(aes(y = Close), color = "blue") +
+  geom_line(aes(y = sma_close), color = "red", size = 1) +
+  labs(title = "Close Price s vyhlazením SMA", x = "Date", y = "Close Price")
+```
+
+
+# Kroskorelační Funkce
+Analyzujeme kroskorelace mezi různými proměnnými časových řad.
+
+```{r}
+Close = ts_data_quarterly[,'Close']
+Open = ts_data_quarterly[, 'Open']
+High = ts_data_quarterly[, 'High']
+Low = ts_data_quarterly[, 'Low']
+
+lag <- 4
+par(mfrow=c(3,1))
+ccf(Close, Open,na.action =na.pass, lag=lag)
+ccf(Close, High,na.action =na.pass, lag=lag)
+ccf(Close, Low,na.action =na.pass, lag=lag)
+par(mfrow=c(1,1))
+```
+# kontrola předpokladů - analýza residui - úprava při nesplnění
+* H0: autokorelace je nulová
+* #H1: autokorelace není nulová
+
+residua odhadnutého modelu by mela být nezávislá -> Ljung-Box neboli Box-Pierce
+
+
+```{r}
+# SARIMA
+checkresiduals(ets_fitted)
+# p-value < 2.2e-16 => ZAMÍTÁME H0
+
+# LM
+checkresiduals(linear_model$fitted.values)
+# p-value < 2.2e-16 => ZAMÍTÁME H0
+
+# EST
+checkresiduals(fitted_values_arima)
+# p-value < 2.2e-16 => ZAMÍTÁME H0
+```
+
+
+V modelech jsou přítomné závislosti zbytku - Autokorelace
+
+# Predikce EST Modelu
+```{r}
+pred_est <- forecast(ets_model, h=12)
+autoplot(pred_est)
+
+summary(pred_est)
+```
+# Predikce TSLM Modelu
+```{r}
+pred_tslm<- forecast(linear_model, h=12)
+autoplot(pred_tslm)
+
+summary(pred_tslm)
+```
+# Predikce SARIMA Modelu
+```{r}
+pred_sarima <- forecast(sarima_model, h=12)
+autoplot(pred_sarima)
+
+summary(pred_sarima)
+```
+# Porovnání jednotlivých modelů
+```{r}
+# AIC kritérium
+aic_lm <- AIC(linear_model)
+aic_sarima <- AIC(sarima_model)
+aic_ets <- AIC(ets_model)
+
+# Vyhodnocení modelů
+res <- data.frame(
+  Model = c('Linear model','SARIMA', 'ETS'),
+  AIC = c(aic_lm,aic_sarima, aic_ets)
+)
+
+res
+```
+
+
+# Závěr
+V této seminární práci, ve které jsme analyzovali hodnoty akcií společnosti Meta nám pro cenu akcie při uzavření burzy v jednotlivých kvartálech vyšel podle AIC kritéria jako nejvhodnější model SARIMA.
