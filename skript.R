@@ -30,6 +30,7 @@ data
 
 # Převedu data do objektu časové řady
 ts_data <- ts(data, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+# <- !!! NEMÁME ŠPATNĚ KVARTÁLY? !!!
 ts_data_quarterly <- aggregate(ts_data, nfrequency=4, FUN=mean) # kvartál - mean(ni -> ni+3)
 
 ts_data_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
