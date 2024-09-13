@@ -224,15 +224,24 @@ grid.arrange(p7, p8, p9, ncol = 1)
 
 #---------------------------------------------------------------------------
 # SARIMA
-sarima <- auto.arima(ts_data, seasonal=TRUE)
-fitted_values_index <- fitted(arima)
 
+#sarima <- auto.arima(ts_data, seasonal=TRUE) <= nefungovalo
+sarima <- auto.arima(ts_close, seasonal=TRUE)
+fitted_values_close <- fitted(sarima)
+#fitted_values_index <- fitted(sarima) <= původní
+
+autoplot(ts_data_quarterly_close, series="Vstupní data")+
+  autolayer(fitted_values_close, series="Fitted data")
+
+
+"""
+<= původní
 autoplot(ts_data, series="Data") +
-  autolayer(fitted_values_index, series="Fitted") +
+  autolayer(fitted_values_close, series="Fitted") +
   labs(title = "Model SARIMA - Index", x = "Čas", y = "Index") +
   theme_minimal() +
   scale_colour_manual(values=c("Data"="blue","Fitted"="red"))
-
+"""
 #---------------------------------------------------------------------------
 # Modely
 
