@@ -226,8 +226,8 @@ grid.arrange(p7, p8, p9, ncol = 1)
 
 #---------------------------------------------------------------------------
 # SARIMA
+#TO:DO optimální
 
-#sarima <- auto.arima(ts_data, seasonal=TRUE) <= nefungovalo
 sarima <- auto.arima(ts_close, seasonal=TRUE)
 fitted_values_close <- fitted(sarima)
 #fitted_values_index <- fitted(sarima) <= původní
@@ -238,10 +238,11 @@ autoplot(ts_data_quarterly_close, series="Vstupní data")+
 #---------------------------------------------------------------------------
 # Modely
 
-# TO:DO SMA model!
-
 # Sarima model - optimální model
 sarima_model <- auto.arima(ts_data_quarterly_close, seasonal=TRUE)
+
+#Review modelu - dopsat slovně a porovnat
+summary(sarima_model) 
 
 # Vypočítané hodnoty modelem
 fitted_values_arima <- fitted(sarima_model)
@@ -319,7 +320,7 @@ summary(m2)
 # residua odhadnutého modelu by mela být nezávislá -> Ljung-Box neboli Box-Pierce
 
 # SARIMA
-checkresiduals(ets_fitted)
+checkresiduals(ets_model)
 # p-value < 2.2e-16 => ZAMÍTÁME H0
 
 # LM

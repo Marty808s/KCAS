@@ -103,4 +103,7 @@ Y _t = − 2.126 + 2.170*trend + 3.462*season2 + 1.366*season3 + 4.074*season4 +
 
 ### TO:DO - check těch residuí
 
-## 4. Jak vypadá optimální odhadnutý model SARIMA (kolik má jakých členů a jaké jsou odhadnuté koeficienty)? Co říká graf "Model SARIMA - Index"?
+## 4. Jak vypadá optimální odhadnutý model SARIMA (kolik má jakých členů a jaké jsou odhadnuté koeficienty)
+Zjistit co jsou ty koeficientY? Jak to funguje..
+
+## 5.V závěru práce porovnáváte odhadnuté modely pomocí Akaikeho kritéria. U obhajoby je, prosím, nezapomeňte porovnat i slovně, a mimo jiné i vzhledem k predikovaným hodnotám (predikce se evidentně liší, tak nějak okomentovat v čem se liší, a co by tedy mohlo být lepší a proč). 
