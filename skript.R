@@ -34,8 +34,10 @@ ts_data_quarterly <- aggregate(ts_data, nfrequency=4, FUN=mean) # kvartál - mea
 
 ts_data_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
 ts_data_quarterly_close <- aggregate(ts_data_close, nfrequency=4, FUN=mean)
+
 ts_data_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
 ts_data_quarterly_open <- aggregate(ts_data_open, nfrequency=4, FUN=mean)
+
 ts_data_vol <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
 ts_data_quarterly_vol <- aggregate(ts_data_vol, nfrequency=4, FUN=mean)
 
@@ -43,30 +45,18 @@ ts_data_quarterly_vol <- aggregate(ts_data_vol, nfrequency=4, FUN=mean)
 ts_data
 ts_data_quarterly
 
-"""
-Chtěl jem doplnit první Q1 v 2012, ale ta rostoucí trend je fakt dost, takže to asi jebu... Konec konců to bude menší odchylka jak průměrování Q1
-
-Qtr1_Open <- window(ts_data_quarterly[, 'Open'], start = c(2012, 1), end = c(2014, 1), frequency = 4)[cycle(ts_data_quarterly) == 4]
-Qtr1_Open
-Qtr1_Close <- window(ts_data_quarterly[, 'Close'], start = c(2012, 1), end = c(2014, 1), frequency = 4)[cycle(ts_data_quarterly) == 4]
-Qtr1_High <- window(ts_data_quarterly[, 'High'], start = c(2012, 1), end = c(2014, 1), frequency = 4)[cycle(ts_data_quarterly) == 4]
-Qtr1_AdjClose <- window(ts_data_quarterly[, 'Adj.Close'], start = c(2012, 1), end = c(2014, 1), frequency = 4)[cycle(ts_data_quarterly) == 4]
-Qtr1_Volume <- window(ts_data_quarterly[, 'Volume'], start = c(2012, 1), end = c(2014, 1), frequency = 4)[cycle(ts_data_quarterly) == 4]
-
-ts_data_quarterly[1, 'Open'] <- mean(Qtr1_Open, na.rm = TRUE)
-ts_data_quarterly[1, 'Close'] <- mean(Qtr1_Close, na.rm = TRUE)
-ts_data_quarterly[1, 'High'] <- mean(Qtr1_High, na.rm = TRUE)
-ts_data_quarterly[1, 'Adj.Close'] <- mean(Qtr1_AdjClose, na.rm = TRUE)
-ts_data_quarterly[1, 'Volume'] <- mean(Qtr1_Volume, na.rm = TRUE)
-ts_data_quarterly
-"""
 
 plot(ts_data_quarterly)
 plot(ts_data)
 
+autoplot(ts_data_quarterly)
+autoplot(ts_data)
+
 # dekompozice časové řady
 decomposed <- decompose(ts_data)
 decomposed
+
+autoplot(decomposed)
 
 decomp_close <- decompose(ts_data_close)
 decomp_open <- decompose(ts_data_open)
@@ -142,10 +132,10 @@ residual_close <- na.omit(residual_close) #na.omit() -> vamže případne NA hod
 acf(residual_close, main="ACF pro close")
 
 
-residual_open <- decomp_qopen$random
+residual_open <- decomposed_open$random # TADY BYL KVARTÁL..
 residual_open <- na.omit(residual_open)
 acf(residual_open, main="ACF pro open")
-# Open a close vykazují téměř stejné hodnoty autokorelace, téměř se nedostaneme 
+# Open a close vykazují téměř stejné hodnoty autokorelace => nenvýznamná, téměř se nedostaneme 
 # nad prahovou hodnotu
 
 
@@ -233,15 +223,6 @@ fitted_values_close <- fitted(sarima)
 autoplot(ts_data_quarterly_close, series="Vstupní data")+
   autolayer(fitted_values_close, series="Fitted data")
 
-
-"""
-<= původní
-autoplot(ts_data, series="Data") +
-  autolayer(fitted_values_close, series="Fitted") +
-  labs(title = "Model SARIMA - Index", x = "Čas", y = "Index") +
-  theme_minimal() +
-  scale_colour_manual(values=c("Data"="blue","Fitted"="red"))
-"""
 #---------------------------------------------------------------------------
 # Modely
 
