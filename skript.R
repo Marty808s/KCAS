@@ -130,11 +130,12 @@ plot(decomposed_open)
 residual_close <- decomposed_close$random
 residual_close <- na.omit(residual_close) #na.omit() -> vamže případne NA hodnoty
 acf(residual_close, main="ACF pro close")
-
+pacf(residual_close)
 
 residual_open <- decomposed_open$random # TADY BYL KVARTÁL..
 residual_open <- na.omit(residual_open)
 acf(residual_open, main="ACF pro open")
+pacf(residual_open)
 # Open a close vykazují téměř stejné hodnoty autokorelace => nenvýznamná, téměř se nedostaneme 
 # nad prahovou hodnotu
 
@@ -142,6 +143,7 @@ acf(residual_open, main="ACF pro open")
 residual_volume <- decomposed_volume$random
 residual_volume <- na.omit(residual_volume)
 acf(residual_volume, main="ACF pro volume")
+pacf(residual_volume)
 # U složky volume můžeme pozorovat významnou autokorelaci, která vyznačuje
 # přítomnost krátkodobých závislostí.
 # V dlouhodobém trendu se již nacházíme pod prahovou hodnotou 

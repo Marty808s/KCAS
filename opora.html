@@ -358,10 +358,11 @@ display: none;
 <h3>ZDROJE</h3>
 <ul>
 <li>Modely TS: <a href="https://www.youtube.com/watch?v=0ar9extHObg&amp;t=44s" class="uri">https://www.youtube.com/watch?v=0ar9extHObg&amp;t=44s</a></li>
-<li>Autokorelace, korelace, parciální korelace
+<li>Autokorelace, korelace, parciální korelace / autokorelace
 <ul>
 <li><a href="https://www.youtube.com/watch?v=ZjaBn93YPWo&amp;t=585s" class="uri">https://www.youtube.com/watch?v=ZjaBn93YPWo&amp;t=585s</a></li>
-<li></li>
+<li><a href="https://www.youtube.com/watch?v=LF0WAVBIhNA" class="uri">https://www.youtube.com/watch?v=LF0WAVBIhNA</a></li>
+<li><a href="https://www.youtube.com/watch?v=DeORzP0go5I" class="uri">https://www.youtube.com/watch?v=DeORzP0go5I</a></li>
 </ul></li>
 </ul>
 </div>
@@ -385,18 +386,34 @@ E_{t}\]</span></p>
 pod grafy - nejsou prohozené? Kromě autokorelační funkce jsme brali
 ještě parciální autokorelační funkci (PACF). Má smysl ji počítat i tady?
 A co vše Vám může spolu s ACF říct?</h2>
-<div id="autokorelačí-funkce" class="section level3">
-<h3>Autokorelačí funkce</h3>
-<p>Jedná se o korelaci jedné proměnné na indexu časové řady <span class="math display">\[t\]</span> vůčí hodnotě na indexu <span class="math display">\[t+shift\]</span> Pro časové řadě definujeme posun
-(shift) a korelujeme vždy příslušnou sekvenci s příslušnou
+<div id="autokorelační-funkce" class="section level3">
+<h3>Autokorelační funkce</h3>
+<p>Jedná se o korelaci jedné proměnné na indexu časové řady <span class="math inline">\(t\)</span> vůči hodnotě na indexu <span class="math inline">\(t+shift\)</span>. Pro časové řady definujeme posun
+(shift) a korelujeme vždy příslušnou sekvenci s odpovídající
 vzdáleností.</p>
-<p>Výpočet pro jeden korelačí koeficient dvou hodnot (pro představu):
-<span class="math display">\[temps = [68.2, 65.7, ...]\]</span> <span class="math display">\[res = corcoef(temps[0],temps[1])\]</span></p>
+<p>Výpočet pro jeden korelační koeficient dvou hodnot (pro představu):
+<span class="math display">\[ temps = [68.2, 65.7, \dots] \]</span>
+<span class="math display">\[ res = cor(temps[0], temps[1])
+\]</span></p>
+<p>Pokud přistupujeme k autokorelaci na časové řadě pro nějaký
+shift:</p>
+</div>
+<div id="příklad" class="section level3">
+<h3>Příklad</h3>
+<p>Potřebuji zjistit autokorelaci náhodné složky pro následující 3 lagy.
+Dle frekvence časové řady pro kvartály platí: <span class="math inline">\(lag = (\text{kvartál} \Rightarrow 3 \text{
+měsíce})\)</span>.</p>
+<p>Tím pádem získáme autokorelaci jak cílového kvartálu, tak i
+jednotlivých měsíců, které kvartál obsahuje.</p>
+<p><span class="math display">\[
+list[ACF_{result}] = \{ cor(X_{t}, X_{t-1}), cor(X_{t}, X_{t-2}), \dots,
+cor(X_{t}, X_{t-k}) \}
+\]</span></p>
 </div>
 <div id="výstup-autokorelační-funkce" class="section level3">
 <h3>Výstup autokorelační funkce</h3>
-<p>Jak na zobě závisí hodnota na indexu <span class="math display">\[t;
-(t+shift)\]</span> pomocí korelačního koeficientu.</p>
+<p>Ukazuje, jak na sobě závisí hodnota na indexu <span class="math inline">\(t\)</span> a <span class="math inline">\(t+shift\)</span> pomocí korelačního
+koeficientu.</p>
 <p><strong>Po dekompozici časové řady:</strong> Pokud po dekompozici
 zkontrolujeme ACF reziduí, chceme vidět hodnoty blízké nule pro všechny
 lagy. To by znamenalo, že v reziduích neexistuje žádná struktura a že
@@ -409,10 +426,63 @@ to ukazovat na sezónnost, kterou model možná ještě nezachytil.</p>
 vybrat vhodnější model. Například pokud ACF ukazuje, že rezidua jsou
 autokorelovaná, může být potřeba použít ARIMA model, který tuto
 závislost zohledňuje.</p>
+<hr />
 </div>
 </div>
-<div id="parciální-autokorelace" class="section level2">
-<h2>Parciální autokorelace</h2>
+<div id="parciální-korelace---prolog-k-pacf" class="section level2">
+<h2>Parciální korelace - prolog k PACF</h2>
+<p>Parciální korelace měří vztah mezi dvěma proměnnými, přičemž
+eliminuje vliv ostatních proměnných. Na rozdíl od běžné korelace, která
+zachycuje celkový vztah mezi dvěma proměnnými, parciální korelace
+ukazuje, jak silný je jejich vztah, pokud kontrolujeme (nebo udržíme
+konstantní) vliv dalších proměnných.</p>
+<p>Např. vztah mezi <span class="math inline">\(\text{weight}\)</span>,
+<span class="math inline">\(\text{chol}\)</span>, <span class="math inline">\(\text{gender}\)</span>.</p>
+<hr />
+</div>
+<div id="parciální-autokorelace-pacf" class="section level2">
+<h2>Parciální autokorelace PACF</h2>
+<p>U parciální autokorelace nevypočítáváme od vektoru všechny členy
+příslušného lagu iterativně, ale přímo k indexu <span class="math inline">\(t_{t-shift}\)</span> pomocí lineární regrese =&gt;
+jejich koeficientů příslušných lagů.</p>
+<p>PACF odstraňuje vliv mezilehlých lagů a ukazuje, jak silný je vztah
+mezi <span class="math inline">\(t\)</span> a <span class="math inline">\(t_{t-k}\)</span></p>
+<p><span class="math display">\[
+S_{t} = \phi_{21} S_{t-1} + \phi_{22} S_{t-2} + \varepsilon_{t}
+\]</span></p>
+<p><strong>Legenda:</strong> - <span class="math inline">\(S_{t}\)</span>: hodnota časové řady v čase <span class="math inline">\(t\)</span>, - <span class="math inline">\(\phi_{21}, \phi_{22}\)</span>: koeficienty
+autoregrese (vztahující se k předchozím hodnotám <span class="math inline">\(S\)</span>), - <span class="math inline">\(S_{t-1}, S_{t-2}\)</span>: hodnoty časové řady
+posunuté o 1 a 2 lagy, - <span class="math inline">\(\varepsilon_{t}\)</span>: náhodná složka (šum) v
+čase <span class="math inline">\(t\)</span>.</p>
+<div id="výpočet-pacf-pro-kvartál-pomocí-regresního-modelu" class="section level3">
+<h3>Výpočet PACF pro kvartál pomocí regresního modelu</h3>
+<ol style="list-style-type: decimal">
+<li><p><strong>Vytvoření lineárního modelu</strong>: Vytvořím lineární
+regresní model, který predikuje hodnotu <span class="math inline">\(S_t\)</span> (např. za měsíc) na základě lagů
+(předchozích měsíců) až do zadaného lag <span class="math inline">\(k\)</span>. Pokud kvartál obsahuje 3 měsíce,
+použijeme 3 hodnoty <span class="math inline">\(S_{t-1}, S_{t-2},
+S_{t-3}\)</span> jako prediktory:</p>
+<p><span class="math display">\[ S_t = \beta_1 S_{t-1} + \beta_2 S_{t-2}
++ \beta_3 S_{t-3} \]</span></p></li>
+<li><p><strong>Výpočet predikovaných hodnot</strong>: Pro každou hodnotu
+<span class="math inline">\(S_t\)</span> predikuji její hodnotu pomocí
+výše uvedeného modelu. Výsledkem je predikovaná hodnota <span class="math inline">\(\hat{S_t}\)</span>.</p></li>
+<li><p><strong>Výpočet reziduí</strong>: Vypočítám rezidua, což jsou
+rozdíly mezi skutečnými a predikovanými hodnotami:</p>
+<p><span class="math display">\[ \text{Rezidua} = S_t - \hat{S_t}
+\]</span></p></li>
+<li><p><strong>Výpočet PACF</strong>: Následně vypočítám korelaci mezi
+skutečnými hodnotami <span class="math inline">\(S_t\)</span> a rezidui,
+abych získal parciální autokorelaci pro lag <span class="math inline">\(k\)</span>:</p>
+<p><span class="math display">\[ \text{PACF}_{k} = cor(S_t,
+\text{Rezidua}) \]</span></p></li>
+</ol>
+</div>
+</div>
+<div id="uměli-byste-zapsat-rovnice-odhadnutých-modelů-tslm-co-vám-tyto-modely-o-řadách-říkají-a-jsou-tyto-modely-dobré-ve-smyslu-že-se-residua-chovají-tak-jak-mají" class="section level2">
+<h2>3. Uměli byste zapsat rovnice odhadnutých modelů TSLM? Co Vám tyto
+modely o řadách říkají? A jsou tyto modely dobré ve smyslu, že se
+residua chovají tak, jak mají?</h2>
 </div>
 </div>
 
