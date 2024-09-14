@@ -185,6 +185,16 @@ grid.arrange(p4, p5, p6, ncol = 1)
 # Model sezónnosti pro Close
 model_close <- tslm(ts_close ~ trend + season)
 summary(model_close)
+model_close$coefficients
+
+#Y_t = − 2.126 + 2.170*trend + 3.462*season2 + 1.366*season3 + 4.074*season4 + 10.242*season5 + 1.243*season6
+#   + 7.046*season7 + 6.559*season8 + 3.180*season9 −2.516*season10 − 3.606*season11 − 3.690*season12
+#===> výstup: největšá vliv má sezoní složka 5. měsíce - 10.242* na jednotku
+#   druhý: s koeficientem 7.046* na jednotku  - 7. měsíc
+#   třetí: 6.559*season8 - 8. měsíc
+
+
+#TO:DO - dodělat check residuí přes ACF A PACF - ale ne na kvartály, ale na měsíce viz předpovědi!
 
 # Model sezónnosti pro Open
 model_open <- tslm(ts_open ~ trend + season)

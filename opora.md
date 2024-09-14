@@ -94,5 +94,13 @@ $$
 
 ## 3. Uměli byste zapsat rovnice odhadnutých modelů TSLM? Co Vám tyto modely o řadách říkají? A jsou tyto modely dobré ve smyslu, že se residua chovají tak, jak mají?
 
+### Pro měsíční ts_model pro proměnnou close (pro příklad):
+Y _t = − 2.126 + 2.170*trend + 3.462*season2 + 1.366*season3 + 4.074*season4 + 10.242*season5 + 1.243*season6 + 7.046*season7 + 6.559*season8 + 3.180*season9 −2.516*season10 − 3.606*season11 − 3.690*season12
 
+* výstup: největšá vliv má sezoní složka 5. měsíce - 10.242* na jednotku - to znamená, že v 5. měsíci podle koeficientu nejvíce narostla hodnota akcií
+* druhý: s koeficientem 7.046* na jednotku  - 7. měsíc
+* třetí: 6.559*season8 - 8. měsíc
 
+### TO:DO - check těch residuí
+
+## 4. Jak vypadá optimální odhadnutý model SARIMA (kolik má jakých členů a jaké jsou odhadnuté koeficienty)? Co říká graf "Model SARIMA - Index"?
