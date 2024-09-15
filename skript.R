@@ -324,11 +324,22 @@ grid.arrange(p7, p8, p9, p10, ncol = 1)
 
 #---------------------------------------------------------------------------
 # 3.2 SARIMA
-# TO:DO optimální - vypsat koeficienty a pochopit co to je... jak to funguje
+# TO:DO optimální - vypsat koeficienty
 
 # Roční close
 sarima_close <- auto.arima(ts_close, seasonal=TRUE)
 fitted_values_close <- fitted(sarima_close)
+
+summary(sarima_close)
+# Optimali ARIMA model: ARIMA(2,1,2)
+# => AR - využíváme 2 předchozí hodnoty časové řady k predikci současné hodnoty
+# => I - Diference: data byly jednou diferencovaná  kvůli stacionaritě
+# => MA - zohledňuje dvě předchozí chyby (rezidua) k predikci současné hodnoty
+# => Drift - trend v modelu - konstanta
+
+# ar - autoregresní koefeicienty
+# ma - koeficienty klouzavého průměru
+
 
 predict_sarima_close <- forecast(fitted_values_close, h=12)
 
@@ -341,6 +352,9 @@ ps1 <- autoplot(ts_close, series="Vstupní data")+
 sarima_open <- auto.arima(ts_open, seasonal=TRUE)
 fitted_values_open <- fitted(sarima_open)
 
+summary(sarima_open)
+# ARIMA(3,1,3) with drift
+
 predict_sarima_open <- forecast(fitted_values_open, h=12)
 
 ps2 <- autoplot(ts_open, series="Vstupní data")+
@@ -351,6 +365,8 @@ ps2 <- autoplot(ts_open, series="Vstupní data")+
 # Roční volume
 sarima_volume <- auto.arima(ts_volume, seasonal=TRUE)
 fitted_values_volume <- fitted(sarima_volume)
+summary(sarima_volume)
+# ARIMA(0,1,1) 
 
 predict_sarima_volume <- forecast(fitted_values_volume, h=12)
 
@@ -429,15 +445,6 @@ pe4 <- autoplot(ts_data_quarterly_close, series="Vstupní data") +
   labs(title = "ETS - Předpověď pro Q Close", x = "Date", y = "Q Close")
 
 grid.arrange(pe1, pe2, pe3, pe4, ncol = 1)
-
-#---------------------------------------------------------------------------
-# 3.4 Dynamické modely - proč, co jak?...
-# linearni dynamický model
-
-# porovnání závislostí ostatních hodnot v řadě - Close
-# Jak závisí konečná cena vůči ostatím cenám v daný den
-m1 <- dynlm(ts_data_quarterly[,'Close'] ~ ts_data_quarterly[,'High'] + ts_data_quarterly[,'Low'] + ts_data_quarterly[,'Open'])
-summary(m1)
 
 #---------------------------------------------------------------------------
 # 4. Porovnání jednotlivých modelů
