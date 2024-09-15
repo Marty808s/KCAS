@@ -354,7 +354,7 @@ fitted_values_open <- fitted(sarima_open)
 
 summary(sarima_open)
 # ARIMA(3,1,3) with drift
-
+checkresiduals(sarima_open) # test zda je korelace nulová v residuí
 predict_sarima_open <- forecast(fitted_values_open, h=12)
 
 ps2 <- autoplot(ts_open, series="Vstupní data")+
@@ -393,10 +393,7 @@ grid.arrange(ps1, ps2, ps3, ps4, ncol = 1)
 # 3.3 ETS
 
 # Roční Close
-sma_data_close <- SMA(ts_close, n=1)
-summary(sma_data_close)
-
-ets_model_close <- ets(sma_data_close)
+ets_model_close <- ets(ts_close)
 ets_fitted_close <- fitted(ets_model_close)
 ets_pred_close <- forecast(ets_fitted_close,h=12)
 
@@ -405,10 +402,7 @@ pe1 <- autoplot(ts_close, series="Vstupní data") +
   labs(title = "ETS - Předpověď pro Close", x = "Date", y = "Close")
 
 # Roční Open
-sma_data_open<- SMA(ts_open, n=1)
-summary(sma_data_open)
-
-ets_model_open <- ets(sma_data_open, model="AAA")
+ets_model_open <- ets(ts_open, model="AAA")
 ets_fitted_open <- fitted(ets_model_open)
 ets_pred_open <- forecast(ets_fitted_open,h=12)
 
@@ -418,10 +412,7 @@ pe2 <- autoplot(ts_open, series="Vstupní data") +
 
 
 # Roční Volume
-sma_data_volume<- SMA(ts_volume, n=1)
-summary(sma_data_volume)
-
-ets_model_volume <- ets(sma_data_volume, model="AAA")
+ets_model_volume <- ets(ts_volume, model="AAA")
 ets_fitted_volume <- fitted(ets_model_volume)
 ets_pred_volume <- forecast(ets_fitted_volume,h=12)
 
@@ -431,13 +422,10 @@ pe3 <- autoplot(ts_volume, series="Vstupní data") +
 
 
 # Close Q
-sma_data_qclose <- SMA(ts_data_quarterly_close, n=1)
-summary(sma_data_qclose)
 
-ets_model_qclose <- ets(sma_data_qclose, model="AAA") # změna na automatickou volbu modelu
-ets_fitted_qclose <-fitted(ets_model)
-
-ets_pred_qclose <- forecast(ets_fitted, h=4)
+ets_model_qclose <- ets(ts_data_quarterly_close, model="AAA") # změna na automatickou volbu modelu
+ets_fitted_qclose <-fitted(ets_model_qclose)
+ets_pred_qclose <- forecast(ets_fitted_qclose, h=4)
 
 # ETS - vizualizace
 pe4 <- autoplot(ts_data_quarterly_close, series="Vstupní data") +

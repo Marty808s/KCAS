@@ -329,52 +329,47 @@ V této části se zaměříme na pokročilejší modely pro analýzu časových
 SARIMA je rozšíření modelu ARIMA o sezónní komponenty.
 
 ```{r}
-# Roční close
-sarima_close <- auto.arima(ts_close, seasonal=TRUE)
-fitted_values_close <- fitted(sarima_close)
+# Roční Close
+ets_model_close <- ets(ts_close)
+ets_fitted_close <- fitted(ets_model_close)
+ets_pred_close <- forecast(ets_fitted_close,h=12)
 
-predict_sarima_close <- forecast(fitted_values_close, h=12)
+pe1 <- autoplot(ts_close, series="Vstupní data") +
+  autolayer(ets_pred_close  , series="Predikce Close")+
+  labs(title = "ETS - Předpověď pro Close", x = "Date", y = "Close")
 
-ps1 <- autoplot(ts_close, series="Vstupní data")+
-  autolayer(predict_sarima_close , series="Predikce SARIMA - close")+
-  labs(title = "SARIMA - Předpověď pro Close", x = "Date", y = "Close")
+# Roční Open
+ets_model_open <- ets(ts_open, model="AAA")
+ets_fitted_open <- fitted(ets_model_open)
+ets_pred_open <- forecast(ets_fitted_open,h=12)
 
-
-# Roční open
-sarima_open <- auto.arima(ts_open, seasonal=TRUE)
-fitted_values_open <- fitted(sarima_open)
-
-predict_sarima_open <- forecast(fitted_values_open, h=12)
-
-ps2 <- autoplot(ts_open, series="Vstupní data")+
-  autolayer(predict_sarima_open , series="Predikce SARIMA - open")+
-  labs(title = "SARIMA - Předpověď pro Open", x = "Date", y = "Open")
+pe2 <- autoplot(ts_open, series="Vstupní data") +
+  autolayer(ets_pred_open  , series="Predikce Open") +
+  labs(title = "ETS - Předpověď pro Open", x = "Date", y = "Open")
 
 
-# Roční volume
-sarima_volume <- auto.arima(ts_volume, seasonal=TRUE)
-fitted_values_volume <- fitted(sarima_volume)
+# Roční Volume
+ets_model_volume <- ets(ts_volume, model="AAA")
+ets_fitted_volume <- fitted(ets_model_volume)
+ets_pred_volume <- forecast(ets_fitted_volume,h=12)
 
-predict_sarima_volume <- forecast(fitted_values_volume, h=12)
-
-ps3 <- autoplot(ts_volume, series="Vstupní data")+
-  autolayer(predict_sarima_volume , series="Predikce SARIMA - volume")+
-  labs(title = "SARIMA - Předpověď pro Volume", x = "Date", y = "Volume")
+pe3 <- autoplot(ts_volume, series="Vstupní data") +
+  autolayer(ets_pred_volume  , series="Predikce Volume") + 
+  labs(title = "ETS - Předpověď pro Volume", x = "Date", y = "Volume")
 
 
-# SARIMA kvartál close
-sarima_qclose <- auto.arima(ts_data_quarterly_close, seasonal=TRUE)
+# Close Q
 
-# Vypočítané hodnoty modelem
-fitted_values_qclose <- fitted(sarima_qclose)
-pred_q_sarima_close <- forecast(sarima_qclose, h=4)
+ets_model_qclose <- ets(ts_data_quarterly_close, model="AAA") # změna na automatickou volbu modelu
+ets_fitted_qclose <-fitted(ets_model_qclose)
+ets_pred_qclose <- forecast(ets_fitted_qclose, h=4)
 
-# Vizualizace
-ps4 <- autoplot(ts_data_quarterly_close, series="Vstupní data")+
-  autolayer(pred_q_sarima_close, series="Predikce SARIMA - Q close")+
-  labs(title = "SARIMA - Předpověď pro Q Close", x = "Date", y = "Close")
+# ETS - vizualizace
+pe4 <- autoplot(ts_data_quarterly_close, series="Vstupní data") +
+  autolayer(ets_pred_qclose , series="Fitted data") +
+  labs(title = "ETS - Předpověď pro Q Close", x = "Date", y = "Q Close")
 
-grid.arrange(ps1, ps2, ps3, ps4, ncol = 1)
+grid.arrange(pe1, pe2, pe3, pe4, ncol = 1)
 
 ```
 
