@@ -363,6 +363,8 @@ display: none;
 <li><a href="https://www.youtube.com/watch?v=ZjaBn93YPWo&amp;t=585s" class="uri">https://www.youtube.com/watch?v=ZjaBn93YPWo&amp;t=585s</a></li>
 <li><a href="https://www.youtube.com/watch?v=LF0WAVBIhNA" class="uri">https://www.youtube.com/watch?v=LF0WAVBIhNA</a></li>
 <li><a href="https://www.youtube.com/watch?v=DeORzP0go5I" class="uri">https://www.youtube.com/watch?v=DeORzP0go5I</a></li>
+<li><a href="https://www.youtube.com/watch?v=3UmyHed0iYE" class="uri">https://www.youtube.com/watch?v=3UmyHed0iYE</a></li>
+<li><a href="https://medium.com/analytics-vidhya/time-series-forecasting-models-726f7968a2c1" class="uri">https://medium.com/analytics-vidhya/time-series-forecasting-models-726f7968a2c1</a></li>
 </ul></li>
 </ul>
 </div>
@@ -513,6 +515,35 @@ kritéria. U obhajoby je, prosím, nezapomeňte porovnat i slovně, a mimo
 jiné i vzhledem k predikovaným hodnotám (predikce se evidentně liší, tak
 nějak okomentovat v čem se liší, a co by tedy mohlo být lepší a
 proč).</h2>
+</div>
+</div>
+<div id="ets-x-arima" class="section level1">
+<h1>ETS X ARIMA</h1>
+<p>There are some metrics that we can take a look at to help us make
+this decision of which times series forecasting method to use. Most of
+the time, we can use AIC and BIC values of our models to determine which
+method works better within our model. We can also notice these
+characteristics if we examine a time series plot of our data and that
+will typically reveal the components of our data and which method may be
+more favorable. While both methods share many similarities, below are
+some of the key difference between them:</p>
+<div id="arima-models" class="section level2">
+<h2>ARIMA models</h2>
+<ul>
+<li>some are stationary</li>
+<li>do not have exponential smoothing counterparts</li>
+<li>use if you see autocorrelation in the data, i.e. the past data
+explains the present data well</li>
+</ul>
+</div>
+<div id="ets-models" class="section level2">
+<h2>ETS models</h2>
+<ul>
+<li>are not stationary</li>
+<li>use exponential smoothing</li>
+<li>use if there is a trend and/or seasonality in the data, as this
+model explicitly models these components</li>
+</ul>
 </div>
 </div>
 

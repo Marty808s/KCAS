@@ -7,6 +7,8 @@
     * https://www.youtube.com/watch?v=ZjaBn93YPWo&t=585s
     * https://www.youtube.com/watch?v=LF0WAVBIhNA
     * https://www.youtube.com/watch?v=DeORzP0go5I
+    * https://www.youtube.com/watch?v=3UmyHed0iYE
+    * https://medium.com/analytics-vidhya/time-series-forecasting-models-726f7968a2c1
     
     
 
@@ -107,3 +109,19 @@ Y _t = − 2.126 + 2.170*trend + 3.462*season2 + 1.366*season3 + 4.074*season4 +
 Zjistit co jsou ty koeficientY? Jak to funguje..
 
 ## 5.V závěru práce porovnáváte odhadnuté modely pomocí Akaikeho kritéria. U obhajoby je, prosím, nezapomeňte porovnat i slovně, a mimo jiné i vzhledem k predikovaným hodnotám (predikce se evidentně liší, tak nějak okomentovat v čem se liší, a co by tedy mohlo být lepší a proč). 
+
+# ETS X ARIMA
+
+There are some metrics that we can take a look at to help us make this decision of which times series forecasting method to use. Most of the time, we can use AIC and BIC values of our models to determine which method works better within our model. We can also notice these characteristics if we examine a time series plot of our data and that will typically reveal the components of our data and which method may be more favorable. While both methods share many similarities, below are some of the key difference between them:
+
+## ARIMA models
+
+* some are stationary
+* do not have exponential smoothing counterparts
+* use if you see autocorrelation in the data, i.e. the past data explains the present data well
+
+## ETS models
+
+* are not stationary
+* use exponential smoothing
+* use if there is a trend and/or seasonality in the data, as this model explicitly models these components
