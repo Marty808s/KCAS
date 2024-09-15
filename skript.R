@@ -434,18 +434,13 @@ grid.arrange(pe1, pe2, pe3, pe4, ncol = 1)
 # 3.4 Dynamické modely - proč, co jak?...
 # linearni dynamický model
 
-m1 <- dynlm(ts_data_quarterly_close ~ decomposed_close$trend + decomposed_close$seasonal)
+# porovnání závislostí ostatních hodnot v řadě - Close
+# Jak závisí konečná cena vůči ostatím cenám v daný den
+m1 <- dynlm(ts_data_quarterly[,'Close'] ~ ts_data_quarterly[,'High'] + ts_data_quarterly[,'Low'] + ts_data_quarterly[,'Open'])
 summary(m1)
-#=> rozepsat výstupy podle Est, p-val...
-
-# porovnání závislostí ostatních proměnných v řadě
-m2 <- dynlm(ts_data_quarterly[,'Close'] ~ ts_data_quarterly[,'Open'] + ts_data_quarterly[,'Low'] + ts_data_quarterly[,'High'])
-summary(m2)
 
 #---------------------------------------------------------------------------
 # 4. Porovnání jednotlivých modelů
-# TO:DO navázat
-
 
 # Vyhodnocení modelů
 res <- data.frame(
