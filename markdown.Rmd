@@ -15,18 +15,25 @@ library(lubridate)
 library(forecast)
 library(gridExtra)
 library(ggplot2)
-library(dynlm)
 library(TTR)
 
 ```
 ```{r}
 data <- read.csv("./monthly_averages.csv")
 
-# Převod datumu na správný datový typ Date
+# 1.1 Převod datumu na správný datový typ Date
 data <- data %>%
   mutate(Date = as.Date(Date, format="%Y-%m-%d"))
+
+# 1.2 Seřazení podle datumu
 data <- data %>%
-  arrange(Date) # seřazení datumu
+  arrange(Date) 
+
+# 1.3 Agregace pro kvartály
+data <- data %>%
+  mutate(Quarter = paste(year(Date), quarter(Date), sep = " Q"))
+
+data
 ```
 ## Dataset obsahuje následující sloupce:
 
@@ -41,43 +48,59 @@ data <- data %>%
 # Převod dat na časovou řadu
 Pro analýzu časové řady převedeme data na objekt časové řady (ts). Začneme s měsíční frekvencí, abychom mohli analyzovat dlouhodobé trendy.
 ```{r}
-# Převedu data do objektu časové řady
+# Měsíc
 ts_data <- ts(data, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
+
+# Kvartál
 ts_data_quarterly <- aggregate(ts_data, nfrequency=4, FUN=mean) # kvartál - mean(ni -> ni+3)
 
+# Složka close - kvartál, rok
 ts_data_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
 ts_data_quarterly_close <- aggregate(ts_data_close, nfrequency=4, FUN=mean)
+
+# Složka open - kvartál, rok
 ts_data_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
 ts_data_quarterly_open <- aggregate(ts_data_open, nfrequency=4, FUN=mean)
+
+# Složka vol - kvartál, rok
 ts_data_vol <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
 ts_data_quarterly_vol <- aggregate(ts_data_vol, nfrequency=4, FUN=mean)
 
 # výstupy
 ts_data
 ts_data_quarterly
+plot(ts_data_quarterly)
+plot(ts_data)
 ```
+
+
 # Analýza
 Časové řady jsou sekvence datových bodů měřených v čase. V našem případě jde o měsíční ceny akcií společnosti Meta. Při analýze časových řad nás zajímají tři hlavní složky:
 
 * Trend: Dlouhodobý směr pohybu ceny, který může být rostoucí, klesající nebo stabilní.
 * Sezónnost: Opakující se vzorce chování v pravidelných intervalech, často spojené s ročními obdobími nebo jinými cykly.
 * Náhodná složka (rezidua): Náhodné fluktuace, které nelze vysvětlit trendem ani sezónností.
+
+Při pohledu na trend jednotlivých analyzovaných složek jsme se rozhodli pro použití aditivního modelu.
 ```{r}
+# Dekompozice
 decomposed <- decompose(ts_data)
-decomposed
 
 decomp_close <- decompose(ts_data_close)
 decomp_open <- decompose(ts_data_open)
 decomp_vol <- decompose(ts_data_vol)
 
-decomp_qclose <- decompose(ts_data_quarterly_close)
-decomp_qopen <- decompose(ts_data_quarterly_open)
-decomp_qvol <- decompose(ts_data_quarterly_vol)
+decomp_qclose <- decompose(ts_data_quarterly_close, type = "additive")
+decomp_qopen <- decompose(ts_data_quarterly_open, type = "additive")
+decomp_qvol <- decompose(ts_data_quarterly_vol, type = "additive")
 
-# vizualizace
+# Vizualizace - dekompozice časové řady
+# roční
 plot(decomp_close)
 plot(decomp_open)
 plot(decomp_vol)
+
+# kvartální
 plot(decomp_qclose)
 plot(decomp_qopen)
 plot(decomp_qvol)
@@ -122,47 +145,8 @@ grid.arrange(p1, p2, p3, ncol = 1)
 
 ```
 ```{r}
-# 2. Dekompozice
-decomposed_close <- decompose(ts_close, type = "multiplicative")
-decomposed_volume <- decompose(ts_volume, type = "multiplicative")
-decomposed_open <- decompose(ts_open, type = "multiplicative")
-# plotneme pro vizualizaci trendu, sezony....
 
 
-# Vizualizace dekompozice
-plot(decomposed_close)
-plot(decomposed_volume)
-plot(decomposed_open)
-
-```
-
-
-# Autokorelační funkce
-Následující část analyzuje autokorelační funkce reziduí po dekompozici časových řad.
-Autokorelační funkce (ACF) měří, jak jsou hodnoty časové řady v různých časech navzájem korelované. Pokud jsou hodnoty v řadě silně korelované, můžeme je použít pro předpověď budoucích hodnot. Vysoké hodnoty ACF na určitém zpoždění mohou indikovat sezónní cykly nebo přetrvávající trendy v datech.
-```{r}
-# 3. Analýza
-
-# Autokorelační funkce
-residual_close <- decomposed_close$random
-residual_close <- na.omit(residual_close)
-acf(residual_close, main="ACF pro close")
-
-
-residual_open <- decomposed_open$random
-residual_open <- na.omit(residual_open)
-acf(residual_open, main="ACF pro open")
-# Open a close vykazují téměř stejné hodnoty autokorelace, téměř se nedostaneme 
-# nad prahovou hodnotu
-
-
-
-residual_volume <- decomposed_volume$random
-residual_volume <- na.omit(residual_volume)
-acf(residual_volume, main="ACF pro volume")
-# U složky volume můžeme pozorovat významnou autokorelaci, která vyznačuje
-# přítomnost krátkodobých závislostí.
-# V dlouhodobém trendu se již nacházíme pod prahovou hodnotou 
 ```
 # Jednoduché exponenciální vyrovnání
 Pro vyhlazení časových řad použijeme metodu jednoduchého exponenciálního vyrovnání (Simple Exponential Smoothing).
@@ -199,6 +183,66 @@ grid.arrange(p4, p5, p6, ncol = 1)
 ```
 
 
+# Autokorelační funkce
+Následující část analyzuje autokorelační funkce reziduí po dekompozici časových řad.
+Autokorelační funkce (ACF) měří, jak jsou hodnoty časové řady v různých časech navzájem korelované. Pokud jsou hodnoty v řadě silně korelované, můžeme je použít pro předpověď budoucích hodnot. Vysoké hodnoty ACF na určitém zpoždění mohou indikovat sezónní cykly nebo přetrvávající trendy v datech.
+```{r}
+# 3. Analýza
+
+# Autokorelační funkce
+lag_max <- 60 #-> 5 let
+qlag_max <- 20 #-> 5 let
+# ACF a PACF pro 'close'
+residual_close <- decomp_close$random
+residual_close <- na.omit(residual_close) # Odstranění NA hodnot
+acf(residual_close, main="ACF pro close", lag.max=lag_max)
+#=> jsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
+pacf(residual_close, lag.max=lag_max)
+#=> jsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
+
+# kvartály
+residual_qclose <- decomp_qclose$random
+residual_qclose <- na.omit(residual_qclose) # Odstranění NA hodnot
+acf(residual_qclose, main="ACF pro close v Q", lag.max=lag_max)
+#=> NEjsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
+pacf(residual_qclose, lag.max=qlag_max)
+#=> jsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
+
+# ACF a PACF pro 'open'
+residual_open <- decomp_open$random
+residual_open <- na.omit(residual_open)
+acf(residual_open, main="ACF pro open", lag.max=lag_max)
+#=> jsou prahové korelace - slabá korelace, ale vyskytuje se i ve 3. lagu
+#- nějaký milník nebo pád
+# - v dlouhodobém posunu klesá
+pacf(residual_open, lag.max=lag_max)
+#=> jsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
+
+# kvartály
+residual_qopen <- decomp_qopen$random
+residual_qopen <- na.omit(residual_qopen)
+acf(residual_qopen, main="ACF pro open v Q", lag.max=lag_max)
+#=> NEjsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
+pacf(residual_qopen, lag.max=qlag_max)
+#=> NEjsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
+
+# ACF a PACF pro 'volume'
+residual_volume <- decomp_vol$random
+residual_volume <- na.omit(residual_volume)
+acf(residual_volume, main="ACF pro volume", lag.max=lag_max)
+#=> NEjsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
+pacf(residual_volume, lag.max=lag_max)
+#=> NEjsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
+
+# kvartály
+residual_qvol <- decomp_qvol$random
+residual_qvol <- na.omit(residual_qvol)
+acf(residual_qvol, main="ACF pro volume v Q", lag.max=lag_max)
+#=> NEjsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
+pacf(residual_qvol, lag.max=qlag_max)
+#=> jsou prahové korelace - 6. kvartál vůči 1. - slabá korelace - v dlouhodobém posunu klesá
+
+```
 # Modelování sezónnosti pomocí TSLM
 Funkce tslm (Time Series Linear Model) v R slouží k vytváření lineárních modelů pro časové řady. V našem případě modelujeme jednotlivé časové řady (Close, Open, a Volume) jako funkce trendu a sezóny.
 
@@ -210,15 +254,37 @@ Funkce tslm (Time Series Linear Model) v R slouží k vytváření lineárních 
 # Model sezónnosti pro Close
 model_close <- tslm(ts_close ~ trend + season)
 summary(model_close)
+model_close$coefficients
 
 # Model sezónnosti pro Open
 model_open <- tslm(ts_open ~ trend + season)
 summary(model_open)
+model_open$coefficients
 
 # Model sezónnosti pro Volume
 model_volume <- tslm(ts_volume ~ trend + season)
 summary(model_volume)
+model_volume$coefficients
+
+model_qclose <- tslm(ts_data_quarterly_close ~ trend + season)
+summary(model_qclose)
+checkresiduals(model_qclose)
+
 ```
+Y_t = − 2.126 + 2.170 * trend + 3.462 * season2 + 1.366 * season3 + 4.074 * season4 + 10.242 * season5 + 1.243*season6
+   + 7.046 * season7 + 6.559 * season8 + 3.180 * season9 −2.516 * season10 − 3.606 * season11 − 3.690 * season12
+   
+   
+Největší vliv má sezoní složka 5. měsíce - 10.242* na jednotku
+   druhý: s koeficientem 7.046* na jednotku  - 7. měsíc
+   třetí: 6.559*season8 - 8. měsíc
+   podle p-value není ani jedna sezona význmaná
+```{r}
+checkresiduals(model_close)
+checkresiduals(model_volume)
+checkresiduals(model_open)
+```
+Pro všechny modely platila pro první dva roky významná korelace - střední, residua mají přibližně normálí rozdělení.
 
 
 # Předpověď pomocí modelu sezónnosti
@@ -233,7 +299,7 @@ Intervalu spolehlivosti: Funkce forecast také vypočítává interval spolehliv
 fc_close <- forecast(model_close, h = 12)
 fc_open <- forecast(model_open, h = 12)
 fc_volume <- forecast(model_volume, h = 12)
-
+fc_qclose <- forecast(model_qclose, h=4)
 
 # Vizualizace výsledků modelu a předpovědi
 p7 <- autoplot(fc_close) +
@@ -245,8 +311,12 @@ p8 <- autoplot(fc_open) +
 p9 <- autoplot(fc_volume) +
   labs(title = "Předpověď pro Volume", x = "Date", y = "Volume")
 
+p10 <- autoplot(fc_qclose)+
+    labs(title = "TSLM Předpověď pro Q Close", x = "Date", y = "Close Price")
+
+
 # Zobrazení grafů vedle sebe
-grid.arrange(p7, p8, p9, ncol = 1)
+grid.arrange(p7, p8, p9, p10, ncol = 1)
 
 ```
 
@@ -259,28 +329,53 @@ V této části se zaměříme na pokročilejší modely pro analýzu časových
 SARIMA je rozšíření modelu ARIMA o sezónní komponenty.
 
 ```{r}
-# Sarima model - optimální model
-sarima_model <- auto.arima(ts_data_quarterly_close, seasonal=TRUE)
+# Roční close
+sarima_close <- auto.arima(ts_close, seasonal=TRUE)
+fitted_values_close <- fitted(sarima_close)
+
+predict_sarima_close <- forecast(fitted_values_close, h=12)
+
+ps1 <- autoplot(ts_close, series="Vstupní data")+
+  autolayer(predict_sarima_close , series="Predikce SARIMA - close")+
+  labs(title = "SARIMA - Předpověď pro Close", x = "Date", y = "Close")
+
+
+# Roční open
+sarima_open <- auto.arima(ts_open, seasonal=TRUE)
+fitted_values_open <- fitted(sarima_open)
+
+predict_sarima_open <- forecast(fitted_values_open, h=12)
+
+ps2 <- autoplot(ts_open, series="Vstupní data")+
+  autolayer(predict_sarima_open , series="Predikce SARIMA - open")+
+  labs(title = "SARIMA - Předpověď pro Open", x = "Date", y = "Open")
+
+
+# Roční volume
+sarima_volume <- auto.arima(ts_volume, seasonal=TRUE)
+fitted_values_volume <- fitted(sarima_volume)
+
+predict_sarima_volume <- forecast(fitted_values_volume, h=12)
+
+ps3 <- autoplot(ts_volume, series="Vstupní data")+
+  autolayer(predict_sarima_volume , series="Predikce SARIMA - volume")+
+  labs(title = "SARIMA - Předpověď pro Volume", x = "Date", y = "Volume")
+
+
+# SARIMA kvartál close
+sarima_qclose <- auto.arima(ts_data_quarterly_close, seasonal=TRUE)
 
 # Vypočítané hodnoty modelem
-fitted_values_arima <- fitted(sarima_model)
-fitted_values_arima
+fitted_values_qclose <- fitted(sarima_qclose)
+pred_q_sarima_close <- forecast(sarima_qclose, h=4)
 
 # Vizualizace
-autoplot(ts_data_quarterly_close, series="Vstupní data")+
-autolayer(fitted_values_arima, series="Fitted data")
+ps4 <- autoplot(ts_data_quarterly_close, series="Vstupní data")+
+  autolayer(pred_q_sarima_close, series="Predikce SARIMA - Q close")+
+  labs(title = "SARIMA - Předpověď pro Q Close", x = "Date", y = "Close")
 
-# Linear model s trendem a sezonosti
-linear_model <- tslm(ts_data_quarterly_close ~ trend + season)
+grid.arrange(ps1, ps2, ps3, ps4, ncol = 1)
 
-# Lineární model - vizualizace
-autoplot(ts_data_quarterly_close, series="Vstupní data")+
-  autolayer(linear_model$fitted.values, series="Fitted data")
-autoplot(ts_data, series="Data") +
-  autolayer(fitted_values_arima, series="Fitted") +
-  labs(title = "Model SARIMA - Index", x = "Čas", y = "Index") +
-  theme_minimal() +
-  scale_colour_manual(values=c("Data"="blue","Fitted"="red"))
 ```
 
 
@@ -288,21 +383,59 @@ autoplot(ts_data, series="Data") +
 
 
 ```{r}
-# => kvůli podmínkám - klouzavý průměr -> vyrovnání dat pro ETS
-sma_data <- SMA(ts_data_quarterly_close, n=1)
-sma_data
-summary(sma_data)
+# Roční Close
+sma_data_close <- SMA(ts_close, n=1)
+summary(sma_data_close)
 
-# kvůli ETS - změna 0
-sma_data[1] <- 0.0000001
+ets_model_close <- ets(sma_data_close)
+ets_fitted_close <- fitted(ets_model_close)
+ets_pred_close <- forecast(ets_fitted_close,h=12)
 
-ets_model <- ets(sma_data, model='MMM')
-ets_fitted <-fitted(ets_model)
+pe1 <- autoplot(ts_close, series="Vstupní data") +
+  autolayer(ets_pred_close  , series="Predikce Close")+
+  labs(title = "ETS - Předpověď pro Close", x = "Date", y = "Close")
+
+# Roční Open
+sma_data_open<- SMA(ts_open, n=1)
+summary(sma_data_open)
+
+ets_model_open <- ets(sma_data_open, model="AAA")
+ets_fitted_open <- fitted(ets_model_open)
+ets_pred_open <- forecast(ets_fitted_open,h=12)
+
+pe2 <- autoplot(ts_open, series="Vstupní data") +
+  autolayer(ets_pred_open  , series="Predikce Open") +
+  labs(title = "ETS - Předpověď pro Open", x = "Date", y = "Open")
+
+
+# Roční Volume
+sma_data_volume<- SMA(ts_volume, n=1)
+summary(sma_data_volume)
+
+ets_model_volume <- ets(sma_data_volume, model="AAA")
+ets_fitted_volume <- fitted(ets_model_volume)
+ets_pred_volume <- forecast(ets_fitted_volume,h=12)
+
+pe3 <- autoplot(ts_volume, series="Vstupní data") +
+  autolayer(ets_pred_volume  , series="Predikce Volume") + 
+  labs(title = "ETS - Předpověď pro Volume", x = "Date", y = "Volume")
+
+
+# Close Q
+sma_data_qclose <- SMA(ts_data_quarterly_close, n=1)
+summary(sma_data_qclose)
+
+ets_model_qclose <- ets(sma_data_qclose, model="AAA") # změna na automatickou volbu modelu
+ets_fitted_qclose <-fitted(ets_model_qclose)
+
+ets_pred_qclose <- forecast(ets_fitted_qclose, h=4)
 
 # ETS - vizualizace
-autoplot(ts_data_quarterly_close, series="Vstupní data")+
-  autolayer(ets_fitted, series="Fitted data")
+pe4 <- autoplot(ts_data_quarterly_close, series="Vstupní data") +
+  autolayer(ets_pred_qclose , series="Fitted data") +
+  labs(title = "ETS - Předpověď pro Q Close", x = "Date", y = "Q Close")
 
+grid.arrange(pe1, pe2, pe3, pe4, ncol = 1)
 ```
 
 
@@ -321,21 +454,23 @@ ggplot(data, aes(x = Date)) +
 
 
 # Kroskorelační Funkce
-Analyzujeme kroskorelace mezi různými proměnnými časových řad.
+Analyzujeme kroskorelace mezi různými proměnnými časových řad. Z této funkce získáme srovnání jak spolu ostatní řady souvidí a jak se navzájem ovlivňují.
 
 ```{r}
 Close = ts_data_quarterly[,'Close']
 Open = ts_data_quarterly[, 'Open']
 High = ts_data_quarterly[, 'High']
 Low = ts_data_quarterly[, 'Low']
+Volume = ts_data_quarterly[, 'Volume']
 
-lag <- 4
-par(mfrow=c(3,1))
+lag <- 20 #-> 5 let
 ccf(Close, Open,na.action =na.pass, lag=lag)
 ccf(Close, High,na.action =na.pass, lag=lag)
 ccf(Close, Low,na.action =na.pass, lag=lag)
-par(mfrow=c(1,1))
+ccf(Volume, Open,na.action =na.pass, lag=lag)
 ```
+
+
 # kontrola předpokladů - analýza residui - úprava při nesplnění
 * H0: autokorelace je nulová
 * #H1: autokorelace není nulová
@@ -345,58 +480,49 @@ residua odhadnutého modelu by mela být nezávislá -> Ljung-Box neboli Box-Pie
 
 ```{r}
 # SARIMA
-checkresiduals(ets_fitted)
+checkresiduals(sarima_close)
 # p-value < 2.2e-16 => ZAMÍTÁME H0
 
 # LM
-checkresiduals(linear_model$fitted.values)
+checkresiduals(model_close)
 # p-value < 2.2e-16 => ZAMÍTÁME H0
 
-# EST
-checkresiduals(fitted_values_arima)
+# ETS
+checkresiduals(ets_model_close)
 # p-value < 2.2e-16 => ZAMÍTÁME H0
 ```
 
 
 V modelech jsou přítomné závislosti zbytku - Autokorelace
 
-# Predikce EST Modelu
-```{r}
-pred_est <- forecast(ets_model, h=12)
-autoplot(pred_est)
 
-summary(pred_est)
-```
-# Predikce TSLM Modelu
-```{r}
-pred_tslm<- forecast(linear_model, h=12)
-autoplot(pred_tslm)
-
-summary(pred_tslm)
-```
-# Predikce SARIMA Modelu
-```{r}
-pred_sarima <- forecast(sarima_model, h=12)
-autoplot(pred_sarima)
-
-summary(pred_sarima)
-```
 # Porovnání jednotlivých modelů
 ```{r}
-# AIC kritérium
-aic_lm <- AIC(linear_model)
-aic_sarima <- AIC(sarima_model)
-aic_ets <- AIC(ets_model)
-
 # Vyhodnocení modelů
 res <- data.frame(
   Model = c('Linear model','SARIMA', 'ETS'),
-  AIC = c(aic_lm,aic_sarima, aic_ets)
+  'AIC Close' = c(AIC(model_close),AIC(sarima_close),AIC(ets_model_close)),
+  'AIC Open' = c(AIC(model_open),AIC(sarima_open),AIC(ets_model_open)),
+  'AIC Volume' = c(AIC(model_volume),AIC(sarima_volume),AIC(ets_model_volume)),
+  'AIC Q_Close' = c(AIC(model_qclose),AIC(sarima_qclose),AIC(ets_model_qclose))
 )
 
-res
+res_long <- res %>%
+  pivot_longer(cols = -Model,
+               names_to = "Kriterium",
+               values_to = "AIC")
+
+res_matrix <- t(as.matrix(res[, -1]))
+
+# Vytvoření barplotu
+ggplot(res_long, aes(x = Kriterium, y = AIC, fill = Model)) +
+  geom_col(position = "dodge") +
+  labs(title = "Porovnání Akaikeho kritéria pro jednotlivé modely",
+       y = "Hodnoty AIC") +
+  theme_minimal()
+
 ```
 
 
 # Závěr
-V této seminární práci, ve které jsme analyzovali hodnoty akcií společnosti Meta nám pro cenu akcie při uzavření burzy v jednotlivých kvartálech vyšel podle AIC kritéria jako nejvhodnější model SARIMA.
+ETS model má vyšší hodnoty AIC ve srovnání s modelem SARIMA, což naznačuje, že není tak přesný. Zvláště u proměnných Volume a kvartální Close má velmi vysoké hodnoty AIC, a tedy se méně hodí k modelování těchto časových řad. Pro proměnné Close a Open je ETS horší než SARIMA, ale lepší než lineární model. ETS model může mít problém dobře zachytit strukturu proměnných ve tvých datech, proto, že nezachycuje nelineární změny tak efektivně jako SARIMA.
