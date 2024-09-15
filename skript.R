@@ -324,8 +324,6 @@ grid.arrange(p7, p8, p9, p10, ncol = 1)
 
 #---------------------------------------------------------------------------
 # 3.2 SARIMA
-# TO:DO - udělat predikci roční ts -> 3 grafy -close, open, volume - viz. linearka
-# TO:DO - residua, summary na model
 # TO:DO optimální - vypsat koeficienty a pochopit co to je... jak to funguje
 
 # Roční close
@@ -377,7 +375,6 @@ grid.arrange(ps1, ps2, ps3, ps4, ncol = 1)
 
 #---------------------------------------------------------------------------
 # 3.3 ETS
-# TO:DO - residua, summary na model
 
 # Roční Close
 sma_data_close <- SMA(ts_close, n=1)
