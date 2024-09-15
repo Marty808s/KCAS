@@ -215,6 +215,7 @@ par(mfrow=c(1,1))
 #---------------------------------------------------------------------------
 #3. Predikce - NEPOUŽÍVÁME VYHLAZENÁ DATA!
 # 3.1 Lineární model se sezoní složkou
+# TO:DO residua
 
 # Model sezónnosti pro Close
 model_close <- tslm(ts_close ~ trend + season)
@@ -274,7 +275,7 @@ grid.arrange(p7, p8, p9, p10, ncol = 1)
 # 3.2 SARIMA
 # TO:DO - udělat predikci roční ts -> 3 grafy -close, open, volume - viz. linearka
 # TO:DO - residua, summary na model
-#TO:DO optimální - vypsat koeficienty a pochopit co to je... jak to funguje
+# TO:DO optimální - vypsat koeficienty a pochopit co to je... jak to funguje
 
 # Roční close
 sarima_close <- auto.arima(ts_close, seasonal=TRUE)
@@ -326,9 +327,6 @@ grid.arrange(ps1, ps2, ps3, ps4, ncol = 1)
 #---------------------------------------------------------------------------
 # 3.3 ETS
 # TO:DO - residua, summary na model
-# TO:DO - udělat predikci roční ts -> 3 grafy -close, open, volume - viz. linearka
-# Co je MMM -> Multiplicative X Additive
-
 
 # Roční Close
 sma_data_close <- SMA(ts_close, n=1)
@@ -341,7 +339,6 @@ ets_pred_close <- forecast(ets_fitted_close,h=12)
 pe1 <- autoplot(ts_close, series="Vstupní data") +
   autolayer(ets_pred_close  , series="Predikce Close")+
   labs(title = "ETS - Předpověď pro Close", x = "Date", y = "Close")
-
 
 # Roční Open
 sma_data_open<- SMA(ts_open, n=1)
