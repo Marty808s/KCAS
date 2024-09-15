@@ -133,9 +133,6 @@ p3 <- ggplot(data, aes(x = Date, y = Open)) +
 # Zobrazení
 grid.arrange(p1, p2, p3, ncol = 1)
 
-
-
-
 # Jednoduché exponenciální vyrovnání
 ses_close <- ses(data$Close, h = 12)
 ses_open <- ses(data$Open, h = 12)
@@ -216,7 +213,7 @@ par(mfrow=c(1,1))
 # všechny hodnoty jsou nad modrou čárou, takže korelace je statisticky významná
 
 #---------------------------------------------------------------------------
-#3. Predikce
+#3. Predikce - NEPOUŽÍVÁME VYHLAZENÁ DATA!
 # 3.1 Lineární model se sezoní složkou
 
 # Model sezónnosti pro Close
@@ -245,32 +242,33 @@ model_open <- tslm(ts_open ~ trend + season)
 summary(model_open)
 
 checkresiduals(model_open)
+
+
+model_qclose <- tslm(ts_data_quarterly_close ~ trend + season)
+summary(model_qclose)
+checkresiduals(model_qclose)
 # Přidat výstupy z residuí
 
 fc_close <- forecast(model_close, h = 12)
 fc_open <- forecast(model_open, h = 12)
 fc_volume <- forecast(model_volume, h = 12)
+fc_qclose <- forecast(model_qclose, h=4)
 
 # Vizualizace výsledků modelu a předpovědi
 p7 <- autoplot(fc_close) +
-  labs(title = "Předpověď pro Close Price", x = "Date", y = "Close Price")
+  labs(title = "TSLM Předpověď pro Close Price", x = "Date", y = "Close Price")
 
 p8 <- autoplot(fc_open) +
-  labs(title = "Předpověď pro Open Price", x = "Date", y = "Open Price")
+  labs(title = "TSLM Předpověď pro Open Price", x = "Date", y = "Open Price")
 
 p9 <- autoplot(fc_volume) +
-  labs(title = "Předpověď pro Volume", x = "Date", y = "Volume")
+  labs(title = "TSLM Předpověď pro Volume", x = "Date", y = "Volume")
+
+p10 <- autoplot(fc_qclose)+
+    labs(title = "TSLM Předpověď pro Q Close", x = "Date", y = "Close Price")
 
 # Zobrazení grafů vedle sebe
-grid.arrange(p7, p8, p9, ncol = 1)
-
-
-# Linear model s trendem a sezonosti
-linear_model <- tslm(ts_data_quarterly_close ~ trend + season)
-
-# Lineární model - vizualizace
-autoplot(ts_data_quarterly_close, series="Vstupní data")+
-  autolayer(forecast(linear_model,h=4), series="Fitted data")
+grid.arrange(p7, p8, p9, p10, ncol = 1)
 
 #---------------------------------------------------------------------------
 # 3.2 SARIMA
@@ -278,51 +276,114 @@ autoplot(ts_data_quarterly_close, series="Vstupní data")+
 # TO:DO - residua, summary na model
 #TO:DO optimální - vypsat koeficienty a pochopit co to je... jak to funguje
 
-sarima <- auto.arima(ts_close, seasonal=TRUE)
-fitted_values_close <- fitted(sarima)
-#fitted_values_index <- fitted(sarima) <= původní
+# Roční close
+sarima_close <- auto.arima(ts_close, seasonal=TRUE)
+fitted_values_close <- fitted(sarima_close)
 
-predict_sarima <- forecast(fitted_values_arima, h=12)
+predict_sarima_close <- forecast(fitted_values_close, h=12)
 
-autoplot(ts_close, series="Vstupní data")+
-  autolayer(predict_sarima, series="Predikce SARIMA")
+ps1 <- autoplot(ts_close, series="Vstupní data")+
+  autolayer(predict_sarima_close , series="Predikce SARIMA - close")+
+  labs(title = "SARIMA - Předpověď pro Close", x = "Date", y = "Close")
 
-# SARIMA kvartály
-sarima_model <- auto.arima(ts_data_quarterly_close, seasonal=TRUE)
 
-#Review modelu - dopsat slovně a porovnat
-summary(sarima_model) 
+# Roční open
+sarima_open <- auto.arima(ts_open, seasonal=TRUE)
+fitted_values_open <- fitted(sarima_open)
+
+predict_sarima_open <- forecast(fitted_values_open, h=12)
+
+ps2 <- autoplot(ts_open, series="Vstupní data")+
+  autolayer(predict_sarima_open , series="Predikce SARIMA - open")+
+  labs(title = "SARIMA - Předpověď pro Open", x = "Date", y = "Open")
+
+
+# Roční volume
+sarima_volume <- auto.arima(ts_volume, seasonal=TRUE)
+fitted_values_volume <- fitted(sarima_volume)
+
+predict_sarima_volume <- forecast(fitted_values_volume, h=12)
+
+ps3 <- autoplot(ts_volume, series="Vstupní data")+
+  autolayer(predict_sarima_volume , series="Predikce SARIMA - volume")+
+  labs(title = "SARIMA - Předpověď pro Volume", x = "Date", y = "Volume")
+
+
+# SARIMA kvartál close
+sarima_qclose <- auto.arima(ts_data_quarterly_close, seasonal=TRUE)
 
 # Vypočítané hodnoty modelem
-fitted_values_arima <- fitted(sarima_model)
-pred_q_sarima <- forecast(sarima_model, h=4)
+fitted_values_qclose <- fitted(sarima_qclose)
+pred_q_sarima_close <- forecast(sarima_model, h=4)
 
 # Vizualizace
-autoplot(ts_data_quarterly_close, series="Vstupní data")+
-autolayer(pred_q_sarima, series="Fitted data")
+ps4 <- autoplot(ts_data_quarterly_close, series="Vstupní data")+
+  autolayer(pred_q_sarima_close, series="Predikce SARIMA - Q close")+
+  labs(title = "SARIMA - Předpověď pro Q Close", x = "Date", y = "Close")
+
+grid.arrange(ps1, ps2, ps3, ps4, ncol = 1)
 
 #---------------------------------------------------------------------------
 # 3.3 ETS
 # TO:DO - residua, summary na model
 # TO:DO - udělat predikci roční ts -> 3 grafy -close, open, volume - viz. linearka
-# Co je MMM
-# => kvůli podmínkám - klouzavý průměr -> vyrovnání dat pro ETS
+# Co je MMM -> Multiplicative X Additive
 
-sma_data <- SMA(ts_data_quarterly_close, n=1)
-sma_data
-summary(sma_data)
 
-# kvůli ETS - změna 0
-sma_data[1] <- 0.0000001
+# Roční Close
+sma_data_close <- SMA(ts_close, n=1)
+summary(sma_data_close)
 
-ets_model <- ets(sma_data, model='MMM')
-ets_fitted <-fitted(ets_model)
+ets_model_close <- ets(sma_data_close)
+ets_fitted_close <- fitted(ets_model_close)
+ets_pred_close <- forecast(ets_fitted_close,h=12)
 
-ets_qpred <- forecast(ets_fitted, h=4)
+pe1 <- autoplot(ts_close, series="Vstupní data") +
+  autolayer(ets_pred_close  , series="Predikce Close")+
+  labs(title = "ETS - Předpověď pro Close", x = "Date", y = "Close")
+
+
+# Roční Open
+sma_data_open<- SMA(ts_open, n=1)
+summary(sma_data_open)
+
+ets_model_open <- ets(sma_data_open)
+ets_fitted_open <- fitted(ets_model_open)
+ets_pred_open <- forecast(ets_fitted_open,h=12)
+
+pe2 <- autoplot(ts_open, series="Vstupní data") +
+  autolayer(ets_pred_open  , series="Predikce Open") +
+  labs(title = "ETS - Předpověď pro Open", x = "Date", y = "Open")
+
+
+# Roční Volume
+sma_data_volume<- SMA(ts_volume, n=1)
+summary(sma_data_volume)
+
+ets_model_volume <- ets(sma_data_volume)
+ets_fitted_volume <- fitted(ets_model_volume)
+ets_pred_volume <- forecast(ets_fitted_volume,h=12)
+
+pe3 <- autoplot(ts_volume, series="Vstupní data") +
+  autolayer(ets_pred_volume  , series="Predikce Volume") + 
+  labs(title = "ETS - Předpověď pro Volume", x = "Date", y = "Volume")
+
+
+# Close Q
+sma_data_qclose <- SMA(ts_data_quarterly_close, n=1)
+summary(sma_data_qclose)
+
+ets_model_qclose <- ets(sma_data_qclose) # změna na automatickou volbu modelu
+ets_fitted_qclose <-fitted(ets_model)
+
+ets_pred_qclose <- forecast(ets_fitted, h=4)
 
 # ETS - vizualizace
-autoplot(ts_data_quarterly_close, series="Vstupní data") +
-  autolayer(ets_qpred, series="Fitted data")
+pe4 <- autoplot(ts_data_quarterly_close, series="Vstupní data") +
+  autolayer(ets_pred_qclose , series="Fitted data") +
+  labs(title = "ETS - Předpověď pro Q Close", x = "Date", y = "Q Close")
+
+grid.arrange(pe1, pe2, pe3, pe4, ncol = 1)
 
 #---------------------------------------------------------------------------
 # 3.4 Dynamické modely - proč, co jak?...
@@ -340,19 +401,35 @@ summary(m2)
 # 4. Porovnání jednotlivých modelů
 # TO:DO navázat
 
-# AIC kritérium
-aic_lm <- AIC(linear_model)
-aic_sarima <- AIC(sarima_model)
-aic_ets <- AIC(ets_model)
 
 # Vyhodnocení modelů
 res <- data.frame(
   Model = c('Linear model','SARIMA', 'ETS'),
-  AIC = c(aic_lm,aic_sarima, aic_ets)
+  'AIC Close' = c(AIC(model_close),AIC(sarima_close),AIC(ets_model_close)),
+  'AIC Open' = c(AIC(model_open),AIC(sarima_open),AIC(ets_model_open)),
+  'AIC Volume' = c(AIC(model_volume),AIC(sarima_volume),AIC(ets_model_volume)),
+  'AIC Q_Close' = c(AIC(model_qclose),AIC(sarima_qclose),AIC(ets_model_qclose))
 )
 
 res
 
+res_matrix <- t(as.matrix(res[, -1]))
+
+# Vytvoření barplotu
+barplot(res_matrix, beside = TRUE, 
+        names.arg = res$Model, 
+        col = c("orange", "blue", "green", "red"),
+        legend.text = colnames(res)[2:5],
+        args.legend = list(x = "topright"),
+        main = "AIC Comparison Across Different Models", 
+        ylab = "AIC Values",)
+
+
 # 5. Závěr
+#ETS model má vyšší hodnoty AIC ve srovnání s SARIMA modelem, což naznačuje, že není tak přesný. 
+#Zvláště u proměnných Volume a kvartální Close má velmi vysoké hodnoty AIC, což znamená, 
+#že se méně hodí k modelování těchto časových řad. Pro proměnné Close a Open je ETS horší než SARIMA, 
+#ale lepší než lineární model. ETS model může mít problém dobře zachytit strukturu proměnných ve tvých datech, 
+#proto, že nezachycuje nelineární změny tak efektivně jako SARIMA.
 #---------------------------------------------------------------------------
 
