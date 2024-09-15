@@ -177,49 +177,57 @@ grid.arrange(p4, p5, p6, ncol = 1)
 # PACF - co nám k tomu řekne?
 
 # Autokorelační funkce
-lag_max <- 60
-qlag_max <- 20
+lag_max <- 60 #-> 5 let
+qlag_max <- 20 #-> 5 let
 # ACF a PACF pro 'close'
 residual_close <- decomp_close$random
 residual_close <- na.omit(residual_close) # Odstranění NA hodnot
 acf(residual_close, main="ACF pro close", lag.max=lag_max)
+#=> jsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
 pacf(residual_close, lag.max=lag_max)
+#=> jsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
 
 # kvartály
 residual_qclose <- decomp_qclose$random
 residual_qclose <- na.omit(residual_qclose) # Odstranění NA hodnot
 acf(residual_qclose, main="ACF pro close v Q", lag.max=lag_max)
+#=> NEjsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
 pacf(residual_qclose, lag.max=qlag_max)
+#=> jsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
 
 # ACF a PACF pro 'open'
 residual_open <- decomp_open$random
 residual_open <- na.omit(residual_open)
 acf(residual_open, main="ACF pro open", lag.max=lag_max)
+#=> jsou prahové korelace - slabá korelace, ale vyskytuje se i ve 3. lagu
+#- nějaký milník nebo pád
+# - v dlouhodobém posunu klesá
 pacf(residual_open, lag.max=lag_max)
+#=> jsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
 
 # kvartály
 residual_qopen <- decomp_qopen$random
 residual_qopen <- na.omit(residual_qopen)
 acf(residual_qopen, main="ACF pro open v Q", lag.max=lag_max)
+#=> NEjsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
 pacf(residual_qopen, lag.max=qlag_max)
+#=> NEjsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
 
 # ACF a PACF pro 'volume'
 residual_volume <- decomp_vol$random
 residual_volume <- na.omit(residual_volume)
 acf(residual_volume, main="ACF pro volume", lag.max=lag_max)
+#=> NEjsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
 pacf(residual_volume, lag.max=lag_max)
+#=> NEjsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
 
 # kvartály
 residual_qvol <- decomp_qvol$random
 residual_qvol <- na.omit(residual_qvol)
 acf(residual_qvol, main="ACF pro volume v Q", lag.max=lag_max)
+#=> NEjsou prahové korelace - slabá korelace - v dlouhodobém posunu klesá
 pacf(residual_qvol, lag.max=qlag_max)
-
-
-# U složky volume můžeme pozorovat významnou autokorelaci, která vyznačuje
-# přítomnost krátkodobých závislostí.
-# V dlouhodobém trendu se již nacházíme pod prahovou hodnotou - zvětšit lag!
-# TO:DO kvartály
+#=> jsou prahové korelace - 6. kvartál vůči 1. - slabá korelace - v dlouhodobém posunu klesá
 
 
 # Kroskorelační funkce - pro mesíční srovnání - freq = 12
@@ -231,17 +239,23 @@ Close = ts_data_quarterly[,'Close']
 Open = ts_data_quarterly[, 'Open']
 High = ts_data_quarterly[, 'High']
 Low = ts_data_quarterly[, 'Low']
+Volume = ts_data_quarterly[, 'Volume']
 
-lag <- 4
-par(mfrow=c(3,1))
+lag <- 20 #-> 5 let
+par(mfrow=c(4,1))
 ccf(Close, Open,na.action =na.pass, lag=lag)
 ccf(Close, High,na.action =na.pass, lag=lag)
 ccf(Close, Low,na.action =na.pass, lag=lag)
+ccf(Volume, Open,na.action =na.pass, lag=lag)
+
 par(mfrow=c(1,1))
 
-# => přepsat...
-# s posunem  3 měsíce vidíme stále velkou korelaci, ta však postupně klesá
-# všechny hodnoty jsou nad modrou čárou, takže korelace je statisticky významná
+#Close&Open,Close&High, Close&Low
+# - v krátkodobém lagu existuje vzájemná korelace, v dlouhodobém hledisku však ne
+
+#Volume&Open
+# - Na počátku byla vysoká negativí korelace - následně v dlouhodobém 
+# horizontu se závislost zmenšuje
 
 #---------------------------------------------------------------------------
 #3. Predikce - NEPOUŽÍVÁME VYHLAZENÁ DATA!
@@ -261,26 +275,32 @@ model_close$coefficients
 #   třetí: 6.559*season8 - 8. měsíc
 # podle p-value není ani jedna sezona význmaná
 
-checkresiduals(model_close) # Dopsat výstup co to je?
+checkresiduals(model_close)
+#upozornit: první dva roky byla významná korelace - střední, 
+# residua mají přibližně normálí rozdělení
 
 # Model sezónnosti pro Volume
 model_volume <- tslm(ts_volume ~ trend + season)
 summary(model_volume)
 
 checkresiduals(model_volume)
+#upozornit: první dva roky byla významná korelace - střední, 
+# residua mají přibližně normálí rozdělení
 
 # Model sezónnosti pro Open
 model_open <- tslm(ts_open ~ trend + season)
 summary(model_open)
 
 checkresiduals(model_open)
-
+#upozornit: první dva roky byla významná korelace - střední, 
+# residua mají přibližně normálí rozdělení
 
 model_qclose <- tslm(ts_data_quarterly_close ~ trend + season)
 summary(model_qclose)
 checkresiduals(model_qclose)
 # Přidat výstupy z residuí
 
+# Predikce na rok
 fc_close <- forecast(model_close, h = 12)
 fc_open <- forecast(model_open, h = 12)
 fc_volume <- forecast(model_volume, h = 12)
