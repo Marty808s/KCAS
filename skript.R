@@ -77,9 +77,9 @@ decomp_close <- decompose(ts_data_close)
 decomp_open <- decompose(ts_data_open)
 decomp_vol <- decompose(ts_data_vol)
 
-decomp_qclose <- decompose(ts_data_quarterly_close, type = "multiplicative")
-decomp_qopen <- decompose(ts_data_quarterly_open, type = "multiplicative")
-decomp_qvol <- decompose(ts_data_quarterly_vol, type = "multiplicative")
+decomp_qclose <- decompose(ts_data_quarterly_close, type = "additive")
+decomp_qopen <- decompose(ts_data_quarterly_open, type = "additive")
+decomp_qvol <- decompose(ts_data_quarterly_vol, type = "additive")
 
 
 # Vizualizace - dekompozice časové řady
@@ -347,7 +347,7 @@ pe1 <- autoplot(ts_close, series="Vstupní data") +
 sma_data_open<- SMA(ts_open, n=1)
 summary(sma_data_open)
 
-ets_model_open <- ets(sma_data_open)
+ets_model_open <- ets(sma_data_open, model="AAA")
 ets_fitted_open <- fitted(ets_model_open)
 ets_pred_open <- forecast(ets_fitted_open,h=12)
 
@@ -360,7 +360,7 @@ pe2 <- autoplot(ts_open, series="Vstupní data") +
 sma_data_volume<- SMA(ts_volume, n=1)
 summary(sma_data_volume)
 
-ets_model_volume <- ets(sma_data_volume)
+ets_model_volume <- ets(sma_data_volume, model="AAA")
 ets_fitted_volume <- fitted(ets_model_volume)
 ets_pred_volume <- forecast(ets_fitted_volume,h=12)
 
@@ -373,7 +373,7 @@ pe3 <- autoplot(ts_volume, series="Vstupní data") +
 sma_data_qclose <- SMA(ts_data_quarterly_close, n=1)
 summary(sma_data_qclose)
 
-ets_model_qclose <- ets(sma_data_qclose) # změna na automatickou volbu modelu
+ets_model_qclose <- ets(sma_data_qclose, model="AAA") # změna na automatickou volbu modelu
 ets_fitted_qclose <-fitted(ets_model)
 
 ets_pred_qclose <- forecast(ets_fitted, h=4)
@@ -420,7 +420,7 @@ barplot(res_matrix, beside = TRUE,
         names.arg = res$Model, 
         col = c("orange", "blue", "green", "red"),
         legend.text = colnames(res)[2:5],
-        args.legend = list(x = "topright"),
+        args.legend = list(x = "topleft"),
         main = "AIC Comparison Across Different Models", 
         ylab = "AIC Values",)
 
@@ -431,5 +431,6 @@ barplot(res_matrix, beside = TRUE,
 #že se méně hodí k modelování těchto časových řad. Pro proměnné Close a Open je ETS horší než SARIMA, 
 #ale lepší než lineární model. ETS model může mít problém dobře zachytit strukturu proměnných ve tvých datech, 
 #proto, že nezachycuje nelineární změny tak efektivně jako SARIMA.
+
 #---------------------------------------------------------------------------
 
