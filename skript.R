@@ -166,24 +166,55 @@ grid.arrange(p4, p5, p6, ncol = 1)
 #---------------------------------------------------------------------------
 # 2. Analýza
 # => TO:DO - definovat bod 0 a lagy - mít přehled
+# Bod 0 => korelace časové řady sama se sebou, lag 1 = korelace lag 0 s lag 1, který značí posun o 12 měsíců zpět
+# v lagu 2 se tedy projeví i nepřímé efekty z lagu 1
+# Na rozdíl od toho PACF bere vždy pouze určitý lag v korelaci s časovou řadou (nižší lagy jsou odstraněny, není tam tento nepřímý vliv)
+# ACF použiji pro identifikaci trendů a sezónnosti, dále pro modelování ARIMA, kdy mě zajímá jaké zpožděné hodnoty mají vliv
+# na hodnoty časové řady
+# PACF použiji pro identifikaci vztahů mezi jednotlivými lagy, dále když mají lagy z ACF dlouhý dosah a není tedy čitelné,
+# které z nich jsou důležité
 # => i pro kvartály - tam je korelace menší
 # PACF - co nám k tomu řekne?
 
 # Autokorelační funkce
+lag_max <- 60
+qlag_max <- 20
+# ACF a PACF pro 'close'
 residual_close <- decomp_close$random
-residual_close <- na.omit(residual_close) #na.omit() -> vamže případne NA hodnoty
-acf(residual_close, main="ACF pro close")
-pacf(residual_close)
+residual_close <- na.omit(residual_close) # Odstranění NA hodnot
+acf(residual_close, main="ACF pro close", lag.max=lag_max)
+pacf(residual_close, lag.max=lag_max)
 
+# kvartály
+residual_qclose <- decomp_qclose$random
+residual_qclose <- na.omit(residual_qclose) # Odstranění NA hodnot
+acf(residual_qclose, main="ACF pro close v Q", lag.max=lag_max)
+pacf(residual_qclose, lag.max=qlag_max)
+
+# ACF a PACF pro 'open'
 residual_open <- decomp_open$random
 residual_open <- na.omit(residual_open)
-acf(residual_open, main="ACF pro open")
-pacf(residual_open)
+acf(residual_open, main="ACF pro open", lag.max=lag_max)
+pacf(residual_open, lag.max=lag_max)
 
+# kvartály
+residual_qopen <- decomp_qopen$random
+residual_qopen <- na.omit(residual_qopen)
+acf(residual_qopen, main="ACF pro open v Q", lag.max=lag_max)
+pacf(residual_qopen, lag.max=qlag_max)
+
+# ACF a PACF pro 'volume'
 residual_volume <- decomp_vol$random
 residual_volume <- na.omit(residual_volume)
-acf(residual_volume, main="ACF pro volume")
-pacf(residual_volume)
+acf(residual_volume, main="ACF pro volume", lag.max=lag_max)
+pacf(residual_volume, lag.max=lag_max)
+
+# kvartály
+residual_qvol <- decomp_qvol$random
+residual_qvol <- na.omit(residual_qvol)
+acf(residual_qvol, main="ACF pro volume v Q", lag.max=lag_max)
+pacf(residual_qvol, lag.max=qlag_max)
+
 
 # U složky volume můžeme pozorovat významnou autokorelaci, která vyznačuje
 # přítomnost krátkodobých závislostí.
