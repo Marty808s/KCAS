@@ -9,6 +9,7 @@
     * https://www.youtube.com/watch?v=DeORzP0go5I
     * https://www.youtube.com/watch?v=3UmyHed0iYE
     * https://medium.com/analytics-vidhya/time-series-forecasting-models-726f7968a2c1
+    * https://otexts.com/fpp2/ets-forecasting.html
     
     
 
