@@ -37,13 +37,13 @@ data
 ```
 ## Dataset obsahuje následující sloupce:
 
-* Date: Datum obchodního dne.
-* Open: Otevírací cena akcie.
-* High: Nejvyšší cena dosažená během obchodního dne.
-* Low: Nejnižší cena dosažená během obchodního dne.
-* Close: Cena akcie při uzavření obchodního dne.
-* Adj. Close: Upravená uzavírací cena, která bere v úvahu dividendy a rozdělení akcií.
-* Volume: Celkový objem obchodů za den.
+* **Date:** Datum obchodního dne.
+* **Open:** Otevírací cena akcie.
+* **High:** Nejvyšší cena dosažená během obchodního dne.
+* **Low:** Nejnižší cena dosažená během obchodního dne.
+* **Close:** Cena akcie při uzavření obchodního dne.
+* **Adj. Close:** Upravená uzavírací cena, která bere v úvahu dividendy a rozdělení akcií.
+* **Volume:** Celkový objem obchodů za den.
 
 # Převod dat na časovou řadu
 Pro analýzu časové řady převedeme data na objekt časové řady (ts). Začneme s měsíční frekvencí, abychom mohli analyzovat dlouhodobé trendy.
@@ -82,6 +82,10 @@ plot(ts_data)
 * Náhodná složka (rezidua): Náhodné fluktuace, které nelze vysvětlit trendem ani sezónností.
 
 Při pohledu na trend jednotlivých analyzovaných složek jsme se rozhodli pro použití aditivního modelu.
+
+# Dekompozice
+Dekompozice časové řady je technika, která odděluje jednotlivé komponenty časové řady, což nám umožňuje lépe porozumět tomu, jak jednotlivé faktory přispívají k celkovému vývoji ceny akcií. V našem případě sledujeme, jaký podíl na změnách ceny má dlouhodobý trend a sezónní výkyvy.
+
 ```{r}
 # Dekompozice
 decomposed <- decompose(ts_data)
@@ -105,10 +109,6 @@ plot(decomp_qclose)
 plot(decomp_qopen)
 plot(decomp_qvol)
 ```
-
-
-# Dekompozice
-Dekompozice časové řady je technika, která odděluje jednotlivé komponenty časové řady, což nám umožňuje lépe porozumět tomu, jak jednotlivé faktory přispívají k celkovému vývoji ceny akcií. V našem případě sledujeme, jaký podíl na změnách ceny má dlouhodobý trend a sezónní výkyvy.
 
 
 # Vizualizace jednotlivých proměnných
@@ -322,13 +322,83 @@ grid.arrange(p7, p8, p9, p10, ncol = 1)
 
 
 # Modely SARIMA a ETS
-V této části se zaměříme na pokročilejší modely pro analýzu časových řad jako jsou SARIMA, ETS a SMA.
+V této části se zaměříme na pokročilejší modely pro analýzu časových řad jako jsou SARIMA a ETS.
 
 
 # SARIMA
 SARIMA je rozšíření modelu ARIMA o sezónní komponenty.
 
 ```{r}
+# Roční close
+sarima_close <- auto.arima(ts_close, seasonal=TRUE)
+fitted_values_close <- fitted(sarima_close)
+
+summary(sarima_close)
+# Optimali ARIMA model: ARIMA(2,1,2)
+# => AR - využíváme 2 předchozí hodnoty časové řady k predikci současné hodnoty
+# => I - Diference: data byly jednou diferencovaná  kvůli stacionaritě
+# => MA - zohledňuje dvě předchozí chyby (rezidua) k predikci současné hodnoty
+# => Drift - trend v modelu - konstanta
+
+# ar - autoregresní koefeicienty
+# ma - koeficienty klouzavého průměru
+
+
+predict_sarima_close <- forecast(fitted_values_close, h=12)
+
+ps1 <- autoplot(ts_close, series="Vstupní data")+
+  autolayer(predict_sarima_close , series="Predikce SARIMA - close")+
+  labs(title = "SARIMA - Předpověď pro Close", x = "Date", y = "Close")
+
+
+# Roční open
+sarima_open <- auto.arima(ts_open, seasonal=TRUE)
+fitted_values_open <- fitted(sarima_open)
+
+summary(sarima_open)
+# ARIMA(3,1,3) with drift
+predict_sarima_open <- forecast(fitted_values_open, h=12)
+
+ps2 <- autoplot(ts_open, series="Vstupní data")+
+  autolayer(predict_sarima_open , series="Predikce SARIMA - open")+
+  labs(title = "SARIMA - Předpověď pro Open", x = "Date", y = "Open")
+
+
+# Roční volume
+sarima_volume <- auto.arima(ts_volume, seasonal=TRUE)
+fitted_values_volume <- fitted(sarima_volume)
+summary(sarima_volume)
+# ARIMA(0,1,1) 
+
+predict_sarima_volume <- forecast(fitted_values_volume, h=12)
+
+ps3 <- autoplot(ts_volume, series="Vstupní data")+
+  autolayer(predict_sarima_volume , series="Predikce SARIMA - volume")+
+  labs(title = "SARIMA - Předpověď pro Volume", x = "Date", y = "Volume")
+
+
+# SARIMA kvartál close
+sarima_qclose <- auto.arima(ts_data_quarterly_close, seasonal=TRUE)
+
+# Vypočítané hodnoty modelem
+fitted_values_qclose <- fitted(sarima_qclose)
+pred_q_sarima_close <- forecast(sarima_qclose, h=4)
+
+# Vizualizace
+ps4 <- autoplot(ts_data_quarterly_close, series="Vstupní data")+
+  autolayer(pred_q_sarima_close, series="Predikce SARIMA - Q close")+
+  labs(title = "SARIMA - Předpověď pro Q Close", x = "Date", y = "Close")
+
+grid.arrange(ps1, ps2, ps3, ps4, ncol = 1)
+
+```
+
+
+# ETS
+
+
+```{r}
+
 # Roční Close
 ets_model_close <- ets(ts_close)
 ets_fitted_close <- fitted(ets_model_close)
@@ -374,66 +444,6 @@ grid.arrange(pe1, pe2, pe3, pe4, ncol = 1)
 ```
 
 
-# ETS
-
-
-```{r}
-# Roční Close
-sma_data_close <- SMA(ts_close, n=1)
-summary(sma_data_close)
-
-ets_model_close <- ets(sma_data_close)
-ets_fitted_close <- fitted(ets_model_close)
-ets_pred_close <- forecast(ets_fitted_close,h=12)
-
-pe1 <- autoplot(ts_close, series="Vstupní data") +
-  autolayer(ets_pred_close  , series="Predikce Close")+
-  labs(title = "ETS - Předpověď pro Close", x = "Date", y = "Close")
-
-# Roční Open
-sma_data_open<- SMA(ts_open, n=1)
-summary(sma_data_open)
-
-ets_model_open <- ets(sma_data_open, model="AAA")
-ets_fitted_open <- fitted(ets_model_open)
-ets_pred_open <- forecast(ets_fitted_open,h=12)
-
-pe2 <- autoplot(ts_open, series="Vstupní data") +
-  autolayer(ets_pred_open  , series="Predikce Open") +
-  labs(title = "ETS - Předpověď pro Open", x = "Date", y = "Open")
-
-
-# Roční Volume
-sma_data_volume<- SMA(ts_volume, n=1)
-summary(sma_data_volume)
-
-ets_model_volume <- ets(sma_data_volume, model="AAA")
-ets_fitted_volume <- fitted(ets_model_volume)
-ets_pred_volume <- forecast(ets_fitted_volume,h=12)
-
-pe3 <- autoplot(ts_volume, series="Vstupní data") +
-  autolayer(ets_pred_volume  , series="Predikce Volume") + 
-  labs(title = "ETS - Předpověď pro Volume", x = "Date", y = "Volume")
-
-
-# Close Q
-sma_data_qclose <- SMA(ts_data_quarterly_close, n=1)
-summary(sma_data_qclose)
-
-ets_model_qclose <- ets(sma_data_qclose, model="AAA") # změna na automatickou volbu modelu
-ets_fitted_qclose <-fitted(ets_model_qclose)
-
-ets_pred_qclose <- forecast(ets_fitted_qclose, h=4)
-
-# ETS - vizualizace
-pe4 <- autoplot(ts_data_quarterly_close, series="Vstupní data") +
-  autolayer(ets_pred_qclose , series="Fitted data") +
-  labs(title = "ETS - Předpověď pro Q Close", x = "Date", y = "Q Close")
-
-grid.arrange(pe1, pe2, pe3, pe4, ncol = 1)
-```
-
-
 # SMA vyhlazení
 Klouzavý průměr (SMA) je účinný nástroj pro vyhlazení časových řad. SMA průměruje předchozí hodnoty a vytváří tak vyrovnaný trend.
 ```{r}
@@ -466,9 +476,9 @@ ccf(Volume, Open,na.action =na.pass, lag=lag)
 ```
 
 
-# kontrola předpokladů - analýza residui - úprava při nesplnění
-* H0: autokorelace je nulová
-* #H1: autokorelace není nulová
+# Kontrola předpokladů
+* **H0:** autokorelace je nulová
+* **H1:** autokorelace není nulová
 
 residua odhadnutého modelu by mela být nezávislá -> Ljung-Box neboli Box-Pierce
 
