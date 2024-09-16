@@ -41,7 +41,7 @@ data
 ts_data <- ts(data, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
 
 # Kvartál
-ts_data_quarterly <- aggregate(ts_data, nfrequency=4, FUN=mean) # kvartál - mean(ni -> ni+3)
+ts_data_quarterly <- aggregate(ts_data, nfrequency=4, FUN=mean) # kvartál
 
 # Složka close - kvartál, rok
 ts_data_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12)
@@ -102,7 +102,6 @@ plot(decomp_qvol)
 #---------------------------------------------------------------------------
 
 # 1.5 Vyhlazení dat
-
 ts_close <- ts(data$Close, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Close
 ts_volume <- ts(data$Volume, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Volume
 ts_open <- ts(data$Open, start = c(year(min(data$Date)), month(min(data$Date))), frequency = 12) # ročí - pro hodnotu Open
@@ -112,9 +111,6 @@ plot(ts_volume)
 plot(ts_open)
 
 # Grafy jedotlivých proměnných s vyhlazením - loess
-# možná TO:DO - exponenciální vyrovnání do druhého sloupce (HoltWinters())
-#https://www.youtube.com/watch?v=Vf7oJ6z2LCc&ab_channel=StatQuestwithJoshStarmer
-
 p1 <- ggplot(data, aes(x = Date, y = Close)) +
   geom_line(color = "blue") +
   geom_smooth(method = "loess", color = "red", se = FALSE, size = 0.5) +
@@ -133,10 +129,29 @@ p3 <- ggplot(data, aes(x = Date, y = Open)) +
 # Zobrazení
 grid.arrange(p1, p2, p3, ncol = 1)
 
+
+#SMA vyrovnání
+posun <- 5
+sma_close <- SMA(ts_close,n=posun)
+sma_volume <- SMA(ts_volume,n=posun)
+sma_open <- SMA(ts_open,n=posun)
+
+ggplot(data,aes(x = Date, y = Close))+
+  geom_line(color="blue") +
+  geom_line(aes(x=Date,y=sma_close, color ="red"))
+
+ggplot(data,aes(x = Date, y = Volume))+
+  geom_line(color="blue") +
+  geom_line(aes(x=Date,y=sma_volume, color ="red"))
+
+ggplot(data,aes(x = Date, y = Open))+
+  geom_line(color="blue") +
+  geom_line(aes(x=Date,y=sma_open, color ="red"))
+
 # Jednoduché exponenciální vyrovnání
-ses_close <- ses(data$Close, h = 12)
-ses_open <- ses(data$Open, h = 12)
-ses_volume <- ses(data$Volume, h = 12)
+ses_close <- ses(data$Close)
+ses_open <- ses(data$Open)
+ses_volume <- ses(data$Volume)
 
 # Nahrání výsledků k půlvodnímu datasetu
 data <- data %>%
@@ -165,7 +180,6 @@ grid.arrange(p4, p5, p6, ncol = 1)
 
 #---------------------------------------------------------------------------
 # 2. Analýza
-# => TO:DO - definovat bod 0 a lagy - mít přehled
 # Bod 0 => korelace časové řady sama se sebou, lag 1 = korelace lag 0 s lag 1, který značí posun o 12 měsíců zpět
 # v lagu 2 se tedy projeví i nepřímé efekty z lagu 1
 # Na rozdíl od toho PACF bere vždy pouze určitý lag v korelaci s časovou řadou (nižší lagy jsou odstraněny, není tam tento nepřímý vliv)
@@ -174,7 +188,6 @@ grid.arrange(p4, p5, p6, ncol = 1)
 # PACF použiji pro identifikaci vztahů mezi jednotlivými lagy, dále když mají lagy z ACF dlouhý dosah a není tedy čitelné,
 # které z nich jsou důležité
 # => i pro kvartály - tam je korelace menší
-# PACF - co nám k tomu řekne?
 
 # Autokorelační funkce
 lag_max <- 60 #-> 5 let
@@ -230,7 +243,7 @@ pacf(residual_qvol, lag.max=qlag_max)
 #=> jsou prahové korelace - 6. kvartál vůči 1. - slabá korelace - v dlouhodobém posunu klesá
 
 
-# Kroskorelační funkce - pro mesíční srovnání - freq = 12
+# Kroskorelační funkce - pro kvartální srovnání - freq = 12
 # -jak spolu ostatní řady souvisí a ovluvňují se navzájem?
 # -jelikoz mame frekvenci ts<-12, tak jeden lag je jeden měsíc
 # -pro lag=3 ::::> (<3)<--0-->(3>)
@@ -258,9 +271,8 @@ par(mfrow=c(1,1))
 # horizontu se závislost zmenšuje
 
 #---------------------------------------------------------------------------
-#3. Predikce - NEPOUŽÍVÁME VYHLAZENÁ DATA!
+#3. Predikce
 # 3.1 Lineární model se sezoní složkou
-# TO:DO residua
 
 # Model sezónnosti pro Close
 model_close <- tslm(ts_close ~ trend + season)
@@ -324,7 +336,6 @@ grid.arrange(p7, p8, p9, p10, ncol = 1)
 
 #---------------------------------------------------------------------------
 # 3.2 SARIMA
-# TO:DO optimální - vypsat koeficienty
 
 # Roční close
 sarima_close <- auto.arima(ts_close, seasonal=TRUE)
